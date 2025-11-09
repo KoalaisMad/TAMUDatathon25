@@ -5,9 +5,10 @@ const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:4000';
 // GET /api/users/email/:email
 export async function GET(
   req: NextRequest,
-  { params }: { params: { email: string } }
+  context: { params: Promise<{ email: string }> }
 ) {
   try {
+    const params = await context.params; // Next.js 15+ requires await
     const response = await fetch(`${BACKEND_URL}/api/users/email/${params.email}`);
     const data = await response.json();
     return NextResponse.json(data, { status: response.status });

@@ -31,8 +31,11 @@ export const authOptions = {
             const userData = await response.json();
             console.log('✅ User created/updated:', userData);
             
-            // Store user ID in the session
-            user.id = userData.userId || userData._id;
+            // Store user ID in the session (backend now always returns _id)
+            if (userData._id) {
+              user.id = userData._id;
+              console.log('💾 Stored user ID:', userData._id);
+            }
           } else {
             console.error('❌ Failed to create user:', await response.text());
           }

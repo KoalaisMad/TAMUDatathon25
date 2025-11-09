@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { Menu, X } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -16,7 +16,7 @@ import Navigation from "../components/Navigation";
 // import { Menu, X } from "lucide-react";
 // import Image from "next/image";
 
-import { upsertUser, getUser, addContact, updateContact, deleteContact } from "@/lib/contact";
+import { upsertUser, addContactByEmail, deleteContactByEmail } from "@/lib/contact";
 
 
 type Contact = { _id: string; name: string; phone: string };
@@ -25,7 +25,7 @@ type Contact = { _id: string; name: string; phone: string };
 type UIContact = Contact & { initials: string; color: string };
 
 
-export default function SettingsPage({ id: userIdProp }: { id?: string }) {
+export default function SettingsPage() {
   const router = useRouter();
   const { data: session } = useSession();
 
@@ -36,9 +36,7 @@ export default function SettingsPage({ id: userIdProp }: { id?: string }) {
   const [newContactPhone, setNewContactPhone] = useState("");
 
 
-  const [id, setUserId] = useState<string | undefined>(userIdProp);
   const [contacts, setContacts] = useState<UIContact[]>([]);
-  const loadingRef = useRef(false);
   const [userStatus, setUserStatus] = useState<string>("");
 
 
@@ -73,51 +71,74 @@ export default function SettingsPage({ id: userIdProp }: { id?: string }) {
         setUserStatus("Not logged in: no email in session");
         return;
       }
-      setUserStatus("Creating or fetching user...");
+      setUserStatus("Loading user data...");
       try {
+        // Create or get user
         const user = await upsertUser(fullName, email);
-        if (user?._id) {
-          setUserId(user._id);
-          setUserStatus(`User ID: ${user._id}`);
-        } else {
-          setUserStatus("User creation failed: no _id returned");
+        console.log("✅ User data loaded for:", email);
+        
+        // Load existing contacts
+        if (user?.emergencyContacts) {
+          setContacts(decorate(user.emergencyContacts));
+          console.log("✅ Loaded", user.emergencyContacts.length, "contacts");
         }
-      } catch (e: any) {
-        setUserStatus("User creation error: " + (e?.message || e));
+        setUserStatus("");
+      } catch (e) {
+        const errorMsg = e instanceof Error ? e.message : String(e);
+        setUserStatus("Error: " + errorMsg);
+        console.error("Failed to load user:", e);
       }
     })();
   }, [session?.user?.email, session?.user?.name]);
 
 
   const canSubmit = Boolean(
-    id && newContactName.trim() && newContactPhone.trim()
+    session?.user?.email && newContactName.trim() && newContactPhone.trim()
   );
 
 
   // ----------------- add contact -----------------
   const handleAddContact = async () => {
     try {
-      if (!id) throw new Error("Missing userId");
-      const updated = await addContact(id, {
+      const email = session?.user?.email;
+      if (!email) throw new Error("Not logged in");
+      
+      console.log("➕ Adding contact");
+      console.log("   User email:", email);
+      console.log("   Email type:", typeof email);
+      console.log("   Encoded:", encodeURIComponent(email));
+      const response = await addContactByEmail(email, {
         name: newContactName.trim(),
         phone: newContactPhone.trim(),
       });
-      setContacts(decorate(updated));
+      // Response format: { message, contacts: [...] }
+      setContacts(decorate(response.contacts || []));
       setNewContactName("");
       setNewContactPhone("");
       setShowAddContact(false);
-    } catch (e: any) {
-      console.error("Add contact failed:", e?.message || e);
-      alert(e?.message || "Failed to add contact");
+      console.log("✅ Contact added successfully");
+    } catch (e) {
+      const errorMsg = e instanceof Error ? e.message : String(e);
+      console.error("Add contact failed:", errorMsg);
+      alert(errorMsg || "Failed to add contact");
     }
   };
 
 
   // ----------------- delete contact -----------------
   const handleRemoveContact = async (contactid: string) => {
-    if (!id) return;
-    await deleteContact(id, contactid).catch(() => null);
-    setContacts(prev => prev.filter(c => c._id !== contactid));
+    const email = session?.user?.email;
+    if (!email) return;
+    
+    try {
+      const response = await deleteContactByEmail(email, contactid);
+      setContacts(decorate(response.contacts || []));
+      console.log("✅ Contact deleted successfully");
+    } catch (e) {
+      console.error("Failed to delete contact:", e);
+      // Still remove from UI even if backend fails
+      setContacts(prev => prev.filter(c => c._id !== contactid));
+    }
   };
 
 

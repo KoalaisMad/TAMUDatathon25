@@ -118,3 +118,23 @@ export async function deleteContact(userId: string, contactId: string) {
   if (!r.ok) throw new Error(await r.text());
   return r.json(); // returns { message, contacts: [...] }
 }
+
+// ========== EMAIL-BASED FUNCTIONS (Simpler!) ==========
+
+export async function addContactByEmail(email: string, contact: { name: string; phone: string }) {
+  const r = await fetch(`${BASE}/users/email/${encodeURIComponent(email)}/contacts`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(contact),
+  });
+  if (!r.ok) throw new Error(await r.text());
+  return r.json(); // returns { message, contacts: [...] }
+}
+
+export async function deleteContactByEmail(email: string, contactId: string) {
+  const r = await fetch(`${BASE}/users/email/${encodeURIComponent(email)}/contacts/${contactId}`, {
+    method: "DELETE",
+  });
+  if (!r.ok) throw new Error(await r.text());
+  return r.json(); // returns { message, contacts: [...] }
+}
