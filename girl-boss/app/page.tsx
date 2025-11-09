@@ -1,15 +1,17 @@
 "use client";
 
-import { Menu, ArrowRight, Shield, MapPin, Users, Star, Check } from "lucide-react";
+import { Menu, Shield, MapPin, Users } from "lucide-react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { signIn, useSession } from "next-auth/react";
 import NavigationMenu from "./components/Navigation";
 
 export default function LandingPage() {
   const router = useRouter();
   const [isNavOpen, setIsNavOpen] = useState(false);
+  const { data: session, status } = useSession();
 
   const features = [
     {
@@ -29,32 +31,11 @@ export default function LandingPage() {
     }
   ];
 
-  const testimonials = [
-    {
-      name: "Sarah M.",
-      role: "College Student",
-      text: "GirlBoss makes me feel safe walking home at night. The route safety features are a game-changer!",
-      rating: 5
-    },
-    {
-      name: "Jessica L.",
-      role: "Professional",
-      text: "I love how easy it is to plan my commute. The app considers safety and convenience perfectly.",
-      rating: 5
-    },
-    {
-      name: "Emma R.",
-      role: "Traveler",
-      text: "Finally, an app that understands the unique safety concerns women face. Highly recommend!",
-      rating: 5
-    }
-  ];
-
   return (
     <div className="min-h-screen ">
       <NavigationMenu isOpen={isNavOpen} onClose={() => setIsNavOpen(false)} />
       {/* Header */}
-      <header className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+      <header className="flex items-center justify-between px-8 lg:px-24 py-4 border-b border-gray-200">
         <div className="flex items-center gap-3">
           <button onClick={() => router.push('/')} className="cursor-pointer hover:opacity-80 transition-opacity">
             <Image
@@ -75,32 +56,39 @@ export default function LandingPage() {
       </header>
 
       {/* Hero Section */}
-      <section className="px-6 py-20 max-w-7xl mx-auto">
-        <div className="grid md:grid-cols-2 gap-12 items-center">
-          <div>
-            <h1 className="text-4xl md:text-6xl font-semibold text-center mb-6">
-              Safety one step at a time!
-            </h1>
-            <p className="text-gray-600 mb-8 text-center mx-12">
-              Find the safest possible way to travel from 2 locations
-            </p>
-            <div className="flex items-center justify-center gap-4">
-              <Button className="bg-[#FF2A8A] text-white">
-                Login with Google
-              </Button>
-            </div>
+      <section className="px-4 sm:px-6 py-12 sm:py-20 max-w-6xl mx-auto">
+        <div className="flex flex-col items-center justify-center text-center">
+          <h1 className="text-4xl md:text-5xl font-semibold mb-4 sm:mb-6 px-4">
+            Safety one step at a time!
+          </h1>
+          <p className="text-gray-600 mb-6 sm:mb-8 text-sm sm:text-base md:text-lg max-w-2xl px-4">
+            Find the safest possible way to travel from 2 locations
+          </p>
+          <div className="flex items-center justify-center gap-4 px-4">
+            <Button 
+              onClick={() => session ? router.push("/home") : signIn("google")}
+              disabled={status === "loading"}
+              className="bg-[#FF2A8A] text-white hover:bg-[#E01D7A] w-full sm:w-auto px-6 py-3"
+            >
+              {status === "loading" 
+                ? "Loading..." 
+                : session 
+                  ? "Start your trip" 
+                  : "Login with Google"
+              }
+            </Button>
           </div>
         </div>
       </section>
 
       {/* Features Section */}
-      <section id="features" className="px-8 pb-20 bg-white">
+      <section id="features" className="px-8 lg:px-24 pb-25 bg-white">
         <div>
           <div className="text-center mb-8">
-            <h2 className="text-3xl font-semibold mb-4">
+            <h2 className="text-2xl font-semibold mb-4">
             Latest technologies are used to maximize user saftey
             </h2>
-            <p className="text-gray-600  mx-auto">
+            <p className="text-gray-600 text-sm  mx-auto">
               More than just navigation – your personal safety companion for every journey
             </p>
           </div>
