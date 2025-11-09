@@ -18,6 +18,8 @@ import {
 import { useState, useRef, useEffect } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
+import { Button } from "@/components/ui/button";
 import NavigationMenu from "../components/Navigation";
 
 interface Location {
@@ -30,7 +32,10 @@ interface Location {
 
 export default function Home() {
   const router = useRouter();
-  const [userName] = useState("Sophia");
+  const { data: session } = useSession();
+  
+  // Get first name from session, fallback to "User"
+  const userName = session?.user?.name?.split(" ")[0] || "User";
   const [userId] = useState("user-" + Math.random().toString(36).substr(2, 9)); // Generate unique user ID
   const [selectedTransport, setSelectedTransport] = useState<string | null>(
     null
@@ -544,30 +549,30 @@ export default function Home() {
         </div>
 
         {/* Start Trip Button */}
-        <button
+        <Button
           onClick={calculateRoute}
           disabled={
             isCalculatingRoute || !selectedLocation || !selectedTransport
           }
-          className="w-full py-2 bg-gray-900 text-white rounded-2xl text font-semibold hover:bg-gray-800 transition-colors mb-10 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          className="w-full py-2 bg-gray-900 text-white hover:bg-gray-800 mb-10 shadow-lg"
         >
           {isCalculatingRoute ? (
             <>
-              <Loader2 className="w-5 h-5 animate-spin" />
+              <Loader2 className="w-5 h-5 animate-spin mr-2" />
               Calculating Route...
             </>
           ) : (
             "Start Trip"
           )}
-        </button>
+        </Button>
 
         {/* Emergency Section */}
         <div className="pb-12">
           <h2 className="text-lg font-semibold mb-4">Feeling Unsafe?</h2>
-          <button className="w-full py-2 bg-red-500 text-white rounded-2xl text font-semibold hover:bg-red-600 transition-colors flex items-center justify-center gap-2 shadow-lg">
-            <AlertTriangle className="w-5 h-5" />
+          <Button className="w-full py-2 bg-red-500 text-white hover:bg-red-600 shadow-lg">
+            <AlertTriangle className="w-5 h-5 mr-2" />
             Notify Emergency Contact!
-          </button>
+          </Button>
         </div>
       </main>
     </div>

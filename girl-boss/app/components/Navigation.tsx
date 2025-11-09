@@ -1,7 +1,9 @@
 "use client";
-import { X, Home, Map, MessageSquare, Mic, Settings } from "lucide-react";
+import { X, Home, Map, MessageSquare, Mic, Settings, LogOut, LogIn } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { signOut, signIn, useSession } from "next-auth/react";
 import Image from "next/image";
+import { Button } from "@/components/ui/button";
 
 interface NavigationProps {
   isOpen: boolean;
@@ -10,6 +12,7 @@ interface NavigationProps {
 
 export default function Navigation({ isOpen, onClose }: NavigationProps) {
   const router = useRouter();
+  const { data: session } = useSession();
 
   const menuItems = [
     { name: "Home", icon: Home, path: "/" },
@@ -78,7 +81,23 @@ export default function Navigation({ isOpen, onClose }: NavigationProps) {
           </nav>
 
           {/* Footer */}
-          <div className="p-6 border-t border-gray-200">
+          <div className="p-6 border-t border-gray-200 space-y-4">
+            <Button
+              onClick={() => session ? signOut({ callbackUrl: "/" }) : signIn("google")}
+              className="w-full bg-[#FF2A8A] hover:bg-[#E01D7A] text-white"
+            >
+              {session ? (
+                <>
+                  <LogOut className="w-5 h-5 mr-2" />
+                  Logout
+                </>
+              ) : (
+                <>
+                  <LogIn className="w-5 h-5 mr-2" />
+                  Login
+                </>
+              )}
+            </Button>
             <p className="text-sm text-gray-500 text-center">
               © 2025 GirlBoss.
             </p>
