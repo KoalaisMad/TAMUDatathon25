@@ -28,6 +28,8 @@ interface TripOption {
   time: string;
   duration: string;
   safetyScore: number;
+  altIndex?: number;
+  route?: any;
 }
 
 declare global {
@@ -128,6 +130,17 @@ export default function TripPage() {
       try {
         // Fetch routes for all transport modes
         const modes = ['walking', 'driving', 'public'];
+
+        const calculateSafetyScore = (mode: string, duration: number) => {
+          const baseScores: { [key: string]: number } = {
+            walking: 67,
+            driving: 94,
+            public: 42,
+          };
+          return baseScores[mode] || 50;
+        };
+
+        // Fetch all routes for all modes
         const results = await Promise.all(
           modes.map(async (mode) => {
             const response = await fetch("/api/route", {
@@ -146,44 +159,33 @@ export default function TripPage() {
           })
         );
 
-        // Calculate safety scores (mock implementation - you can replace with real algorithm)
-        const calculateSafetyScore = (mode: string, duration: number) => {
-          const baseScores: { [key: string]: number } = {
-            walking: 67,
-            driving: 94,
-            public: 42,
-          };
-          return baseScores[mode] || 50;
-        };
-
-        const options: TripOption[] = results
-          .filter(r => r.data)
-          .map((result) => {
-            const data = result.data!;
-            const arrivalTime = new Date(Date.now() + data.duration * 1000);
+        // Flatten all walking alternatives, keep one for other modes
+        let options: TripOption[] = [];
+        for (const result of results) {
+          if (!result.data || !result.data.routes) continue;
+          const routes = result.mode === 'walking' ? result.data.routes : [result.data.routes[0]];
+          routes.forEach((route: any, idx: number) => {
+            const arrivalTime = new Date(Date.now() + route.duration * 1000);
             const hours = arrivalTime.getHours();
             const minutes = arrivalTime.getMinutes();
             const period = hours >= 12 ? 'PM' : 'AM';
             const displayHours = hours % 12 || 12;
-            
-            const durationMinutes = Math.floor(data.duration / 60);
-            
-            return {
+            const durationMinutes = Math.floor(route.duration / 60);
+            options.push({
               mode: result.mode,
               icon: result.mode === 'walking' ? User : result.mode === 'driving' ? Car : Bus,
               time: `${displayHours}:${minutes.toString().padStart(2, '0')} ${period}`,
               duration: `${durationMinutes} min`,
-              safetyScore: calculateSafetyScore(result.mode, data.duration),
-            };
+              safetyScore: calculateSafetyScore(result.mode, route.duration),
+              altIndex: result.mode === 'walking' ? idx + 1 : undefined,
+              route,
+            });
           });
+        }
 
         setTripOptions(options);
         
-        // Set the route info for the selected transport
-        const selectedRoute = results.find(r => r.mode === transport);
-        if (selectedRoute && selectedRoute.data) {
-          setRouteInfo(selectedRoute.data);
-        }
+        // (No need to set selectedRoute for alternatives display)
       } catch (error) {
         console.error("Error fetching routes:", error);
       } finally {
@@ -364,34 +366,45 @@ export default function TripPage() {
           <>
             {/* Trip Options Cards */}
             <div className="space-y-4 mb-8">
-              {tripOptions.map((option, index) => (
-                <div
-                  key={index}
-                  className="flex items-center gap-4 p-2 px-4 bg-white border-2 border-gray-200 rounded-2xl hover:border-pink-300 transition-colors"
-                >
-                  <div className="w-10 h-10 bg-pink-200 rounded-2xl flex items-center justify-center flex-shrink-0">
-                    <option.icon className="w-5 h-5 text-gray-900" />
+              {tripOptions.map((option, index) => {
+                // Build Google Maps URL for this mode
+                const travelMode = option.mode === 'public' ? 'transit' : option.mode;
+                const mapsUrl = `https://www.google.com/maps/dir/?api=1&origin=${startLat},${startLon}&destination=${endLat},${endLon}&travelmode=${travelMode}`;
+                return (
+                  <div
+                    key={index}
+                    className="flex items-center gap-4 p-2 px-4 bg-white border-2 border-gray-200 rounded-2xl hover:border-pink-300 transition-colors"
+                  >
+                    <div className="w-10 h-10 bg-pink-200 rounded-2xl flex items-center justify-center flex-shrink-0">
+                      <option.icon className="w-5 h-5 text-gray-900" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-lg font-semibold text-gray-900">
+                        {getModeName(option.mode)}
+                      </h3>
+                      <p className="text-gray-600">
+                        {option.time} · {option.duration}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-gray-600 text-sm">Safety Score</p>
+                      <p className={`text-2xl font-semibold ${
+                        option.safetyScore >= 80 ? 'text-pink-500' : 
+                        option.safetyScore >= 60 ? 'text-orange-500' : 
+                        'text-red-500'
+                      }`}>
+                        {option.safetyScore}
+                      </p>
+                      <button
+                        onClick={() => window.open(mapsUrl, '_blank')}
+                        className="mt-2 bg-pink-100 hover:bg-pink-200 text-pink-700 px-3 py-1 rounded-lg text-xs font-medium transition-colors"
+                      >
+                        Open in Google Maps
+                      </button>
+                    </div>
                   </div>
-                  <div className="flex-1">
-                    <h3 className="text-lg font-semibold text-gray-900">
-                      {getModeName(option.mode)}
-                    </h3>
-                    <p className="text-gray-600">
-                      {option.time} · {option.duration}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-gray-600 text-sm">Safety Score</p>
-                    <p className={`text-2xl font-semibold ${
-                      option.safetyScore >= 80 ? 'text-pink-500' : 
-                      option.safetyScore >= 60 ? 'text-orange-500' : 
-                      'text-red-500'
-                    }`}>
-                      {option.safetyScore}
-                    </p>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             {/* Recommended Trip Mode */}
@@ -403,23 +416,7 @@ export default function TripPage() {
             </div>
 
             {/* Map */}
-            <div className="bg-gray-100 rounded-3xl overflow-hidden h-96 relative">
-              <div ref={mapRef} className="w-full h-full" data-debug-map />
-
-              {/* Debug overlay to help diagnose SDK / init issues */}
-              <div className="absolute top-4 right-4 bg-white bg-opacity-90 rounded px-3 py-2 text-xs shadow">
-                <div className="font-medium">Map debug</div>
-                <div>SDK Loaded: {mapsLoaded ? <span className="text-green-600">yes</span> : <span className="text-red-600">no</span>}</div>
-                <div>Init error: {mapInitError ?? mapsError ?? 'none'}</div>
-              </div>
-
-              <button 
-                onClick={openInGoogleMaps}
-                className="absolute bottom-4 left-4 bg-white rounded-lg px-4 py-2 shadow-lg hover:shadow-xl transition-shadow cursor-pointer"
-              >
-                <p className="text-gray-600 text-sm font-medium">Open in Google Maps</p>
-              </button>
-            </div>
+            {/* Optionally, you can remove the map area or keep it for context. */}
           </>
         )}
       </main>
