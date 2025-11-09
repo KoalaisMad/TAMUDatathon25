@@ -1,6 +1,4 @@
 "use client";
-
-import { useState } from "react";
 import { X, Home, Map, MessageSquare, Mic, Settings } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
@@ -45,16 +43,10 @@ export default function Navigation({ isOpen, onClose }: NavigationProps) {
               <Image
                 src="/girlboss.png"
                 alt="GirlBoss Logo"
-                width={40}
-                height={40}
+                width={150}
+                height={150}
                 className="rounded-lg"
               />
-              <div>
-                <span className="text-xl font-bold">
-                  <span className="text-pink-500">Girl</span>
-                  <span className="text-black">Boss</span>
-                </span>
-              </div>
             </div>
             <button
               onClick={onClose}
@@ -76,7 +68,7 @@ export default function Navigation({ isOpen, onClose }: NavigationProps) {
                     <div className="w-10 h-10 bg-pink-100 rounded-lg flex items-center justify-center group-hover:bg-pink-200 transition-colors">
                       <item.icon className="w-5 h-5 text-pink-600" />
                     </div>
-                    <span className="text-lg font-semibold text-gray-900">
+                    <span className="font-semibold text-gray-900">
                       {item.name}
                     </span>
                   </button>
@@ -88,7 +80,7 @@ export default function Navigation({ isOpen, onClose }: NavigationProps) {
           {/* Footer */}
           <div className="p-6 border-t border-gray-200">
             <p className="text-sm text-gray-500 text-center">
-              © 2025 GirlBoss. Empowering women to lead and succeed.
+              © 2025 GirlBoss.
             </p>
           </div>
         </div>
