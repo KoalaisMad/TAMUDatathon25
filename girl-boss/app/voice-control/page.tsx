@@ -52,7 +52,6 @@ export default function VoiceAssistantPage() {
   const [status, setStatus] = useState("Tap the mic for immediate assistance");
   
   const recognitionRef = useRef<SpeechRecognition | null>(null);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
     // Initialize speech recognition
@@ -102,76 +101,55 @@ export default function VoiceAssistantPage() {
         body: JSON.stringify({ text }),
       });
 
-      if (!response.ok) {
-        // Try to get error details from response
-        const contentType = response.headers.get("content-type");
-        if (contentType && contentType.includes("application/json")) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || `Server error: ${response.status}`);
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || "Failed to get response");
+      }
+
+      const replyText = data.text;
+      console.log("📝 AI Response:", replyText);
+
+      // Use browser's built-in speech synthesis
+      if ('speechSynthesis' in window) {
+        const utterance = new SpeechSynthesisUtterance(replyText);
+        
+        // Configure voice (female, US English)
+        const voices = window.speechSynthesis.getVoices();
+        const femaleVoice = voices.find(v => 
+          v.lang.startsWith('en') && v.name.includes('Female')
+        ) || voices.find(v => v.lang.startsWith('en'));
+        
+        if (femaleVoice) {
+          utterance.voice = femaleVoice;
         }
-        throw new Error(`Failed to get response: ${response.status} ${response.statusText}`);
-      }
-
-      // Check if response is audio
-      const contentType = response.headers.get("content-type");
-      if (!contentType || !contentType.includes("audio")) {
-        throw new Error("Expected audio response but got: " + contentType);
-      }
-
-      // Get audio blob from response
-      const audioBlob = await response.blob();
-      console.log("Audio blob received:", audioBlob.size, "bytes");
-      
-      const audioUrl = URL.createObjectURL(audioBlob);
-      console.log("Audio URL created:", audioUrl);
-
-      // Play audio
-      if (audioRef.current) {
-        audioRef.current.src = audioUrl;
-        setStatus("Playing response...");
         
-        // Add error handler
-        audioRef.current.onerror = (e) => {
-          console.error("Audio playback error:", e);
-          setStatus("Error playing audio");
-          setIsProcessing(false);
-          URL.revokeObjectURL(audioUrl);
-        };
-        
-        // Add ended handler
-        audioRef.current.onended = () => {
-          console.log("Audio playback finished");
+        utterance.rate = 1.0;
+        utterance.pitch = 1.0;
+        utterance.volume = 1.0;
+
+        setStatus("Speaking response...");
+
+        utterance.onend = () => {
+          console.log("✅ Speech finished");
           setStatus("Tap the mic for immediate assistance");
           setIsProcessing(false);
-          URL.revokeObjectURL(audioUrl);
         };
 
-        // Try to play
-        try {
-          const playPromise = audioRef.current.play();
-          if (playPromise !== undefined) {
-            playPromise
-              .then(() => {
-                console.log("✅ Audio playing successfully");
-              })
-              .catch((error) => {
-                console.error("❌ Audio play failed:", error);
-                setStatus(`Playback blocked: ${error.message}`);
-                setIsProcessing(false);
-                URL.revokeObjectURL(audioUrl);
-              });
-          }
-        } catch (error) {
-          console.error("Play error:", error);
-          setStatus("Could not play audio");
+        utterance.onerror = (event) => {
+          console.error("❌ Speech error:", event);
+          setStatus("Error speaking response");
           setIsProcessing(false);
-          URL.revokeObjectURL(audioUrl);
-        }
+        };
+
+        window.speechSynthesis.speak(utterance);
       } else {
-        console.error("Audio ref is null!");
-        setStatus("Audio player not initialized");
+        // Fallback: just show the text
+        console.warn("Speech synthesis not supported");
+        setStatus(replyText);
         setIsProcessing(false);
       }
+
     } catch (error) {
       console.error("Chat error:", error);
       const errorMessage = error instanceof Error ? error.message : "Unknown error";
@@ -272,9 +250,6 @@ export default function VoiceAssistantPage() {
           </button>
         </div>
       </main>
-
-      {/* Hidden audio element for playing responses */}
-      <audio ref={audioRef} className="hidden" />
     </div>
   );
 }
