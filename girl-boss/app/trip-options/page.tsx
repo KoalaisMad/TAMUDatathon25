@@ -442,8 +442,11 @@ export default function TripPage() {
                       <h3 className="text-lg font-semibold text-gray-900">
                         {getModeName(option.mode)}
                       </h3>
-                      <p className="text-gray-600">
-                        {option.time} · {option.duration}
+                      <p className="text-gray-600 text-sm">
+                        {option.time} 
+                      </p>
+                      <p className="text-gray-600 text-sm">
+                        {option.duration}
                       </p>
                     </div>
                     <div className="text-right">
@@ -472,7 +475,7 @@ export default function TripPage() {
             {/* Recommended Trip Mode */}
             <div className="mb-6">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-2xl font-semibold text-gray-900">Recommended Trip Mode</h2>
+                <h2 className="text-lg font-semibold text-gray-900">Recommended Trip Mode</h2>
                 <span className="text-pink-500 font-semibold">{getRecommendedMode()}</span>
               </div>
             </div>
