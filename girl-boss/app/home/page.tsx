@@ -20,6 +20,13 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import NavigationMenu from "../components/Navigation";
 import { upsertUser } from "@/lib/contact"; //add the user here
 
@@ -60,6 +67,9 @@ export default function Home() {
   } | null>(null);
   const [isCalculatingRoute, setIsCalculatingRoute] = useState(false);
   const [isNavOpen, setIsNavOpen] = useState(false);
+  const [isSendingAlert, setIsSendingAlert] = useState(false);
+  const [showSuccessDialog, setShowSuccessDialog] = useState(false);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   
@@ -364,6 +374,53 @@ export default function Home() {
     }
   };
 
+  // Handle emergency button click - Show confirmation dialog
+  const handleEmergencyButtonClick = () => {
+    if (!currentLocation) {
+      alert("Please enable location services to send emergency alert");
+      return;
+    }
+    setShowConfirmDialog(true);
+  };
+
+  // Send emergency alert - Send SMS to specific number
+  const sendEmergencyAlert = async () => {
+    setShowConfirmDialog(false);
+    
+    if (!currentLocation) {
+      alert("Location not available. Please try again.");
+      return;
+    }
+    
+    setIsSendingAlert(true);
+
+    try {
+      const message = `🚨 EMERGENCY ALERT from ${userName}!\n\nLocation: https://maps.google.com/?q=${currentLocation.lat},${currentLocation.lon}\n\nTime: ${new Date().toLocaleString()}`;
+
+      const response = await fetch("/api/send-sms", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          to: "+18328867189",
+          message: message,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setShowSuccessDialog(true);
+      } else {
+        throw new Error(data.error || "Failed to send alert");
+      }
+    } catch (error) {
+      console.error("Emergency alert error:", error);
+      alert("Failed to send emergency alert. Please call emergency services directly.");
+    } finally {
+      setIsSendingAlert(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-white">
       <NavigationMenu isOpen={isNavOpen} onClose={() => setIsNavOpen(false)} />
@@ -574,12 +631,82 @@ export default function Home() {
         {/* Emergency Section */}
         <div className="pb-12">
           <h2 className="text-lg font-semibold mb-4">Feeling Unsafe?</h2>
-          <Button className="w-full py-2 bg-red-500 text-white hover:bg-red-600 shadow-lg">
-            <AlertTriangle className="w-5 h-5 mr-2" />
-            Notify Emergency Contact!
+          <Button 
+            onClick={handleEmergencyButtonClick}
+            disabled={isSendingAlert || !currentLocation}
+            className="w-full py-2 bg-red-500 text-white hover:bg-red-600 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isSendingAlert ? (
+              <>
+                <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                Sending Alert...
+              </>
+            ) : (
+              <>
+                <AlertTriangle className="w-5 h-5 mr-2" />
+                Notify Emergency Contact!
+              </>
+            )}
           </Button>
         </div>
       </main>
+
+      {/* Confirmation Dialog */}
+      <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-xl flex items-center gap-2">
+              <AlertTriangle className="w-6 h-6 text-red-500" />
+              Confirm Emergency Alert
+            </DialogTitle>
+            <DialogDescription className="text-base pt-2">
+              This will send an emergency alert to{" "}
+              <span className="font-semibold">(832) 886-7189</span> with your
+              current location. Continue?
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex gap-2 mt-4">
+            <Button
+              onClick={() => setShowConfirmDialog(false)}
+              variant="outline"
+              className="flex-1"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={sendEmergencyAlert}
+              className="flex-1 bg-pink-400 hover:bg-pink-600"
+            >
+              Send Alert
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Success Dialog */}
+      <Dialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-xl flex items-center gap-2">
+ 
+              Alert Sent Successfully!
+            </DialogTitle>
+            <DialogDescription className="text-base pt-2">
+              Your emergency alert has been sent to{" "}
+              <span className="font-semibold">(832) 886-7189</span> with your
+              current location.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end gap-2 mt-4">
+            <Button
+              onClick={() => setShowSuccessDialog(false)}
+              className="bg-pink-400 hover:bg-pink-600 w-full"
+            >
+              Close
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
