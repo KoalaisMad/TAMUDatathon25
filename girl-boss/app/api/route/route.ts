@@ -51,12 +51,13 @@ export async function POST(request: NextRequest) {
         key: serverKey,
       };
 
+      // Request alternatives for all modes
+      params.alternatives = 'true';
       // For driving we can request traffic-influenced durations
       if (mode === 'driving') {
         params.departure_time = 'now';
         params.traffic_model = 'best_guess';
       }
-
       // For transit, a departure_time is required to get realistic schedules
       if (mode === 'transit') {
         params.departure_time = 'now';
@@ -70,18 +71,22 @@ export async function POST(request: NextRequest) {
         // If Google fails, fall back to OSRM below
         console.warn('Google Directions failed, falling back to OSRM:', gData.status, gData.error_message);
       } else {
-        const route = gData.routes[0];
-        const leg = route.legs && route.legs[0];
-
+        // Return all routes for all modes
+        const formattedRoutes = gData.routes.map((route: any) => {
+          const leg = route.legs && route.legs[0];
+          return {
+            distance: leg ? leg.distance.value : null, // meters
+            duration: leg ? (leg.duration_in_traffic ? leg.duration_in_traffic.value : leg.duration.value) : null, // seconds
+            geometry: route.overview_polyline ? route.overview_polyline.points : null, // encoded polyline
+            steps: (leg && leg.steps) ? leg.steps.map((s: any) => ({
+              instruction: s.html_instructions ? stripHtml(s.html_instructions) : s.instructions || '',
+              distance: s.distance ? s.distance.value : null,
+              duration: s.duration ? s.duration.value : null,
+            })) : [],
+          };
+        });
         return NextResponse.json({
-          distance: leg ? leg.distance.value : null, // meters
-          duration: leg ? (leg.duration_in_traffic ? leg.duration_in_traffic.value : leg.duration.value) : null, // seconds (prefer traffic-aware)
-          geometry: route.overview_polyline ? route.overview_polyline.points : null, // encoded polyline
-          steps: (leg && leg.steps) ? leg.steps.map((s: any) => ({
-            instruction: s.html_instructions ? stripHtml(s.html_instructions) : s.instructions || '',
-            distance: s.distance ? s.distance.value : null,
-            duration: s.duration ? s.duration.value : null,
-          })) : [],
+          routes: formattedRoutes
         });
       }
     }
@@ -112,14 +117,18 @@ export async function POST(request: NextRequest) {
     const route = data.routes[0];
     
     return NextResponse.json({
-      distance: route.distance, // in meters
-      duration: route.duration, // in seconds
-      geometry: route.geometry, // GeoJSON geometry
-      steps: route.legs[0].steps.map((step: any) => ({
-        instruction: step.maneuver.instruction || `${step.maneuver.type} on ${step.name}`,
-        distance: step.distance,
-        duration: step.duration,
-      })),
+      routes: [
+        {
+          distance: route.distance, // in meters
+          duration: route.duration, // in seconds
+          geometry: route.geometry, // GeoJSON geometry
+          steps: route.legs[0].steps.map((step: any) => ({
+            instruction: step.maneuver.instruction || `${step.maneuver.type} on ${step.name}`,
+            distance: step.distance,
+            duration: step.duration,
+          })),
+        }
+      ]
     });
   } catch (error) {
     console.error('Routing error:', error);

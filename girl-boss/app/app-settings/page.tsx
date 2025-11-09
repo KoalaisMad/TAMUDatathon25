@@ -226,6 +226,18 @@ import { Menu, X } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import Navigation from "../components/Navigation";
 
 // ---- API helpers you already have (adjust import path if different)
@@ -319,7 +331,7 @@ export default function SettingsPage({ userId: userIdProp }: { userId?: string }
       <Navigation isOpen={isNavOpen} onClose={() => setIsNavOpen(false)} />
 
       {/* Header */}
-      <header className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+      <header className="flex items-center justify-between px-8 py-4 border-b border-gray-200">
         <button onClick={() => router.push('/')} className="cursor-pointer hover:opacity-80 transition-opacity">
           <Image src="/girlboss.png" alt="GirlBoss Logo" width={150} height={150} className="rounded-lg" />
         </button>
@@ -332,33 +344,33 @@ export default function SettingsPage({ userId: userIdProp }: { userId?: string }
       </header>
 
       {/* Main Content */}
-      <main className="max-w-2xl mx-auto px-6 py-8">
-        <h1 className="text-3xl font-bold mb-2 text-center">
+      <main className="max-w-2xl mx-auto px-8 py-12">
+        <h1 className="text-4xl font-semibold mb-2 text-center">
           <span className="text-gray-900">Settings</span>
         </h1>
         <p className="text-center text-gray-500 text-sm mb-8">Manage your account</p>
 
         {/* Name Field */}
         <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-2">Name</label>
+          <label className="block text-lg font-medium text-gray-700 mb-2">Name</label>
           <input
             type="text"
             value={sessionName}
             placeholder="Your Name"
             readOnly
-            className="w-full px-4 py-3 rounded-xl border border-gray-300 bg-gray-50 text-gray-600 cursor-not-allowed"
+            className="w-full px-4 py-2 rounded-xl border border-gray-300 bg-gray-50 text-gray-600 cursor-not-allowed"
           />
         </div>
 
         {/* Email Field */}
         <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+          <label className="block text-lg font-medium text-gray-700 mb-2">Email</label>
           <input
             type="email"
             value={sessionEmail}
             placeholder="your.email@example.com"
             readOnly
-            className="w-full px-4 py-3 rounded-xl border border-gray-300 bg-gray-50 text-gray-600 cursor-not-allowed"
+            className="w-full px-4 py-2 rounded-xl border border-gray-300 bg-gray-50 text-gray-600 cursor-not-allowed"
           />
         </div>
 
@@ -407,14 +419,20 @@ export default function SettingsPage({ userId: userIdProp }: { userId?: string }
                       setNewContactName("");
                       setNewContactPhone("");
                     }}
-                    className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg font-semibold hover:bg-gray-300 transition-colors"
                   >
                     Cancel
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
+                  </Button>
+                  <Button
+                    onClick={handleAddContact}
+                    disabled={!newContactName.trim() || !newContactPhone.trim()}
+                    className="bg-pink-500 hover:bg-pink-600"
+                  >
+                    Add Contact
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </div>
 
           {/* Contact List */}
           <div className="space-y-3">
