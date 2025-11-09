@@ -272,13 +272,13 @@ export default function TripPage() {
               {tripOptions.map((option, index) => (
                 <div
                   key={index}
-                  className="flex items-center gap-4 p-5 bg-white border-2 border-gray-200 rounded-2xl hover:border-pink-300 transition-colors"
+                  className="flex items-center gap-4 p-2 px-4 bg-white border-2 border-gray-200 rounded-2xl hover:border-pink-300 transition-colors"
                 >
-                  <div className="w-16 h-16 bg-pink-200 rounded-2xl flex items-center justify-center flex-shrink-0">
-                    <option.icon className="w-8 h-8 text-gray-900" />
+                  <div className="w-10 h-10 bg-pink-200 rounded-2xl flex items-center justify-center flex-shrink-0">
+                    <option.icon className="w-5 h-5 text-gray-900" />
                   </div>
                   <div className="flex-1">
-                    <h3 className="text-xl font-semibold text-gray-900 mb-1">
+                    <h3 className="text-lg font-semibold text-gray-900">
                       {getModeName(option.mode)}
                     </h3>
                     <p className="text-gray-600">
@@ -286,8 +286,8 @@ export default function TripPage() {
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="text-gray-600 text-sm mb-1">Safety Score</p>
-                    <p className={`text-3xl font-semibold ${
+                    <p className="text-gray-600 text-sm">Safety Score</p>
+                    <p className={`text-2xl font-semibold ${
                       option.safetyScore >= 80 ? 'text-pink-500' : 
                       option.safetyScore >= 60 ? 'text-orange-500' : 
                       'text-red-500'
