@@ -9,6 +9,7 @@ import { Menu, X } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
+import { Button } from "@/components/ui/button";
 import Navigation from "../components/Navigation";
 
 interface EmergencyContact {
@@ -94,42 +95,42 @@ export default function SettingsPage() {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-2xl mx-auto px-6 py-8">
-        <h1 className="text-3xl font-bold mb-2 text-center">
+      <main className="max-w-2xl mx-auto px-8 py-12">
+        <h1 className="text-4xl font-semibold mb-2 text-center">
           <span className="text-gray-900">Settings</span>
         </h1>
-        <p className="text-center text-gray-500 text-sm mb-8">
+        <p className="text-center text-pink-400 mb-8">
           Manage your account
         </p>
 
         {/* Name Field */}
         <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-2">Name</label>
+          <label className="block text-lg font-medium text-gray-700 mb-2">Name</label>
           <input
             type="text"
             value={session?.user?.name || ""}
             placeholder="Your Name"
             readOnly
-            className="w-full px-4 py-3 rounded-xl border border-gray-300 bg-gray-50 text-gray-600 cursor-not-allowed"
+            className="w-full px-4 py-2 rounded-xl border border-gray-300 bg-gray-50 text-gray-600 cursor-not-allowed"
           />
         </div>
 
         {/* Email Field */}
         <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+          <label className="block text-lg font-medium text-gray-700 mb-2">Email</label>
           <input
             type="email"
             value={session?.user?.email || ""}
             placeholder="your.email@example.com"
             readOnly
-            className="w-full px-4 py-3 rounded-xl border border-gray-300 bg-gray-50 text-gray-600 cursor-not-allowed"
+            className="w-full px-4 py-2 rounded-xl border border-gray-300 bg-gray-50 text-gray-600 cursor-not-allowed"
           />
         </div>
 
         {/* Emergency Contacts */}
         <div className="mb-6">
-          <div className="flex items-center justify-between mb-3">
-            <label className="block text-sm font-medium text-gray-700">Emergency Contacts</label>
+          <div className="flex items-center justify-between">
+            <label className="block text-lg font-medium text-gray-700 mb-2">Emergency Contacts</label>
             <button 
               onClick={() => setShowAddContact(!showAddContact)}
               className="w-8 h-8 bg-pink-500 text-white rounded-full flex items-center justify-center text-xl hover:bg-pink-600 transition-colors"
@@ -207,9 +208,9 @@ export default function SettingsPage() {
         </div>
 
         {/* Save Changes Button */}
-        <button className="w-full py-4 bg-gray-300 text-gray-600 rounded-2xl font-semibold hover:bg-gray-400 transition-colors">
+        <Button className="w-full py-4 bg-gray-300 text-gray-600 hover:bg-gray-400">
           Save Changes
-        </button>
+        </Button>
       </main>
     </div>
   );
