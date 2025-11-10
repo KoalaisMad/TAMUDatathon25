@@ -63,7 +63,7 @@ export default function LandingPage() {
         <div>
           <div className="text-center mb-8">
             <h2 className="text-2xl font-semibold mb-4">
-            Latest technologies are used to maximize user saftey
+            Latest technologies are used to maximize user safety
             </h2>
             <p className="text-gray-600 text-sm md:text-base mx-auto">
               More than just navigation – your personal safety companion for every journey
