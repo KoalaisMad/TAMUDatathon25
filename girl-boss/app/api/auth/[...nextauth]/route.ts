@@ -1,5 +1,14 @@
 import NextAuth from 'next-auth';
 import GoogleProvider from 'next-auth/providers/google';
+import type { User, Session } from 'next-auth';
+import type { JWT } from 'next-auth/jwt';
+
+// Extend the Session type to include user id
+interface ExtendedSession extends Session {
+  user: Session['user'] & {
+    id?: string;
+  };
+}
 
 const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:4000';
 
@@ -12,7 +21,7 @@ export const authOptions = {
   ],
   secret: process.env.NEXTAUTH_SECRET,
   callbacks: {
-    async signIn({ user, account, profile }: any) {
+    async signIn({ user }: { user: User }) {
       try {
         // Automatically create/update user in database on sign in
         if (user.email && user.name) {
@@ -47,10 +56,10 @@ export const authOptions = {
         return true; // Still allow sign in even if DB fails
       }
     },
-    async session({ session, token }: any) {
+    async session({ session, token }: { session: Session; token: JWT }) {
       // Add user ID to session
-      if (token?.sub) {
-        session.user.id = token.sub;
+      if (token?.sub && session.user) {
+        (session as ExtendedSession).user.id = token.sub;
       }
       return session;
     },

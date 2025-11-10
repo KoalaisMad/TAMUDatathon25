@@ -20,6 +20,37 @@ interface RouteRequest {
   transportMode: 'driving' | 'walking' | 'public';
 }
 
+interface GoogleStep {
+  html_instructions?: string;
+  instructions?: string;
+  distance?: { value: number };
+  duration?: { value: number };
+}
+
+interface GoogleLeg {
+  distance: { value: number };
+  duration: { value: number };
+  duration_in_traffic?: { value: number };
+  steps?: GoogleStep[];
+}
+
+interface GoogleRoute {
+  legs?: GoogleLeg[];
+  overview_polyline?: { points: string };
+}
+
+interface OSRMManeuver {
+  type: string;
+  instruction?: string;
+}
+
+interface OSRMStep {
+  maneuver: OSRMManeuver;
+  name: string;
+  distance: number;
+  duration: number;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body: RouteRequest = await request.json();
@@ -44,7 +75,7 @@ export async function POST(request: NextRequest) {
 
       const mode = modeMap[transportMode] || 'driving';
 
-      const params: any = {
+      const params: Record<string, string> = {
         origin: `${startLat},${startLon}`,
         destination: `${endLat},${endLon}`,
         mode,
@@ -72,13 +103,13 @@ export async function POST(request: NextRequest) {
         console.warn('Google Directions failed, falling back to OSRM:', gData.status, gData.error_message);
       } else {
         // Return all routes for all modes
-        const formattedRoutes = gData.routes.map((route: any) => {
+        const formattedRoutes = gData.routes.map((route: GoogleRoute) => {
           const leg = route.legs && route.legs[0];
           return {
             distance: leg ? leg.distance.value : null, // meters
             duration: leg ? (leg.duration_in_traffic ? leg.duration_in_traffic.value : leg.duration.value) : null, // seconds
             geometry: route.overview_polyline ? route.overview_polyline.points : null, // encoded polyline
-            steps: (leg && leg.steps) ? leg.steps.map((s: any) => ({
+            steps: (leg && leg.steps) ? leg.steps.map((s: GoogleStep) => ({
               instruction: s.html_instructions ? stripHtml(s.html_instructions) : s.instructions || '',
               distance: s.distance ? s.distance.value : null,
               duration: s.duration ? s.duration.value : null,
@@ -122,7 +153,7 @@ export async function POST(request: NextRequest) {
           distance: route.distance, // in meters
           duration: route.duration, // in seconds
           geometry: route.geometry, // GeoJSON geometry
-          steps: route.legs[0].steps.map((step: any) => ({
+          steps: route.legs[0].steps.map((step: OSRMStep) => ({
             instruction: step.maneuver.instruction || `${step.maneuver.type} on ${step.name}`,
             distance: step.distance,
             duration: step.duration,

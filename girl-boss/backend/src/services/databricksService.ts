@@ -338,11 +338,11 @@ function getFallbackPredection(
   // ENHANCED base scores with MUCH more variation and lower scores for risky areas
   // Urban areas (high urbanScore): Generally MORE dangerous - 30-70 day, 15-45 night
   // Rural areas (low urbanScore): Generally safer - 55-85 day, 35-65 night
-  let baseDayScore = urbanScore > 0.5 
+  const baseDayScore = urbanScore > 0.5 
     ? 30 + (areaRiskFactor * 40) + (directionFactor * 10) // 30-80 for urban
     : 55 + ((1 - urbanScore) * 30) + (directionFactor * 10); // 55-95 for rural
     
-  let baseNightScore = urbanScore > 0.5 
+  const baseNightScore = urbanScore > 0.5 
     ? 15 + (areaRiskFactor * 30) + (directionFactor * 10) // 15-55 for urban at night
     : 35 + ((1 - urbanScore) * 30) + (directionFactor * 10); // 35-75 for rural at night
   

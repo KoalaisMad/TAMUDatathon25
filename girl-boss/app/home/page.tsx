@@ -44,13 +44,40 @@ interface EmergencyContact {
   phone: string;
 }
 
+// Utility functions for distance calculation
+const toRad = (value: number): number => {
+  return (value * Math.PI) / 180;
+};
+
+const calculateDistance = (
+  lat1: number,
+  lon1: number,
+  lat2: number,
+  lon2: number
+): number => {
+  const R = 3959; // Earth's radius in miles
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRad(lat1)) *
+      Math.cos(toRad(lat2)) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  const distance = R * c;
+
+  return distance;
+};
+
 export default function Home() {
   const router = useRouter();
   const { data: session } = useSession();
   
   // Get first name from session, fallback to "User"
   const userName = session?.user?.name?.split(" ")[0] || "User";
-  const fullName  = session?.user?.name ?? "";  
   const userEmail = session?.user?.email ?? ""; 
   const [userId] = useState("user-" + Math.random().toString(36).substr(2, 9)); // Generate unique user ID
   const [selectedTransport, setSelectedTransport] = useState<string | null>(
@@ -66,10 +93,6 @@ export default function Home() {
   const [currentLocation, setCurrentLocation] = useState<{
     lat: number;
     lon: number;
-  } | null>(null);
-  const [routeInfo, setRouteInfo] = useState<{
-    distance: number;
-    duration: number;
   } | null>(null);
   const [isCalculatingRoute, setIsCalculatingRoute] = useState(false);
   const [isNavOpen, setIsNavOpen] = useState(false);
@@ -189,7 +212,23 @@ export default function Home() {
         });
         const data = await response.json();
 
-        const formattedLocations: Location[] = data.map((item: any) => {
+        interface NominatimResult {
+          name?: string;
+          display_name: string;
+          lat: string;
+          lon: string;
+          address?: {
+            house_number?: string;
+            road?: string;
+            suburb?: string;
+            city?: string;
+            state?: string;
+            postcode?: string;
+            country?: string;
+          };
+        }
+
+        const formattedLocations: Location[] = data.map((item: NominatimResult) => {
           // Build a better formatted address
           const addressParts = [];
           if (item.address) {
@@ -269,34 +308,6 @@ export default function Home() {
 
     return () => clearTimeout(debounceTimer);
   }, [searchQuery, currentLocation]);
-
-  // Calculate distance between two coordinates (Haversine formula)
-  const calculateDistance = (
-    lat1: number,
-    lon1: number,
-    lat2: number,
-    lon2: number
-  ): number => {
-    const R = 3959; // Earth's radius in miles
-    const dLat = toRad(lat2 - lat1);
-    const dLon = toRad(lon2 - lon1);
-
-    const a =
-      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos(toRad(lat1)) *
-        Math.cos(toRad(lat2)) *
-        Math.sin(dLon / 2) *
-        Math.sin(dLon / 2);
-
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    const distance = R * c;
-
-    return distance;
-  };
-
-  const toRad = (value: number): number => {
-    return (value * Math.PI) / 180;
-  };
 
   // Handle click outside to close dropdown
   useEffect(() => {
@@ -567,7 +578,7 @@ export default function Home() {
                   onClick={() => handleLocationSelect(location)}
                   className="w-full flex items-start gap-3 p-4 hover:bg-pink-50 transition-colors text-left border-b border-gray-100 last:border-b-0 first:rounded-t-2xl last:rounded-b-2xl"
                 >
-                  <MapPin className="w-5 h-5 text-pink-500 mt-1 flex-shrink-0" />
+                  <MapPin className="w-5 h-5 text-pink-500 mt-1 shrink-0" />
                   <div className="flex-1">
                     <div className="flex items-center justify-between gap-2">
                       <div className="font-semibold text-gray-900">
@@ -576,7 +587,7 @@ export default function Home() {
                       {location.distance !== null &&
                         location.distance !== undefined && (
                           <div
-                            className={`text-xs font-medium px-2 py-1 rounded-full whitespace-nowrap flex-shrink-0 ${
+                            className={`text-xs font-medium px-2 py-1 rounded-full whitespace-nowrap shrink-0 ${
                               location.distance <= 50
                                 ? "bg-green-100 text-green-700"
                                 : "bg-gray-100 text-gray-600"
@@ -625,7 +636,7 @@ export default function Home() {
             ) : (
               tripHistory.map((trip, index) => (
                 <div key={index} className="flex items-center gap-4 rounded-2xl">
-                  <div className="w-10 h-10 bg-pink-200 rounded-xl flex items-center justify-center flex-shrink-0">
+                  <div className="w-10 h-10 bg-pink-200 rounded-xl flex items-center justify-center shrink-0">
                     <Navigation className="w-5 h-5 text-pink-600" />
                   </div>
                   <div className="flex-1 min-w-0">
@@ -636,7 +647,7 @@ export default function Home() {
                       <p className="text-gray-500 text-sm">{trip.address}</p>
                     </div>
                   </div>
-                  <div className="hidden md:block text-sm text-gray-400 flex-shrink-0">
+                  <div className="hidden md:block text-sm text-gray-400 shrink-0">
                     {trip.date}
                   </div>
                 </div>

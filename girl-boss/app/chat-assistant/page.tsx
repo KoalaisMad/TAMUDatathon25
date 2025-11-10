@@ -3,10 +3,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Menu, Send, MapPin } from "lucide-react";
+import { Menu, Send } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useSession } from "next-auth/react";
 import Navigation from "../components/Navigation";
 import { sendChatMessage } from "@/lib/api";
 
@@ -19,7 +18,6 @@ interface Message {
 
 export default function ChatbotPage() {
   const router = useRouter();
-  const { data: session } = useSession();
   const [isNavOpen, setIsNavOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
     {

@@ -58,7 +58,7 @@ export interface RouteResponse {
     riskFactors: string[];
     recommendations: string[];
   };
-  context: any;
+  context: Record<string, unknown>;
   trip?: string;
   recommendation: 'safe' | 'caution' | 'risky';
 }
@@ -172,7 +172,7 @@ export interface User {
     phone: string;
     relationship?: string;
   }>;
-  preferences?: any;
+  preferences?: Record<string, unknown>;
 }
 
 export const createUser = async (user: Omit<User, '_id'>): Promise<{ userId: string }> => {
@@ -196,7 +196,7 @@ export const updateUser = async (userId: string, updates: Partial<User>): Promis
 export const addEmergencyContact = async (
   userId: string,
   contact: { name: string; phone: string; relationship?: string }
-): Promise<{ message: string; contacts: any[] }> => {
+): Promise<{ message: string; contacts: Array<{ name: string; phone: string; relationship?: string }> }> => {
   return apiRequest(`/api/users/${userId}/emergency-contacts`, {
     method: 'POST',
     body: JSON.stringify(contact),

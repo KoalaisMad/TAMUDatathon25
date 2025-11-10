@@ -34,6 +34,25 @@ type Contact = { _id: string; name: string; phone: string };
 
 type UIContact = Contact & { initials: string; color: string };
 
+// UI helper functions (moved outside component to avoid dependency issues)
+const getInitials = (name: string) => {
+  const words = name.trim().split(/\s+/);
+  if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
+  return (words[0][0] + words[words.length - 1][0]).toUpperCase();
+};
+
+const getRandomColor = () => {
+  const colors = ["bg-pink-200","bg-purple-200","bg-pink-300","bg-purple-300","bg-pink-400","bg-rose-200"];
+  return colors[Math.floor(Math.random() * colors.length)];
+};
+
+const decorate = (list: Contact[]): UIContact[] =>
+  list.map(c => ({
+    ...c,
+    initials: getInitials(c.name),
+    color: getRandomColor(),
+  }));
+
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -48,28 +67,6 @@ export default function SettingsPage() {
 
   const [contacts, setContacts] = useState<UIContact[]>([]);
   const [userStatus, setUserStatus] = useState<string>("");
-
-
-  // ----------------- UI helpers -----------------
-  const getInitials = (name: string) => {
-    const words = name.trim().split(/\s+/);
-    if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
-    return (words[0][0] + words[words.length - 1][0]).toUpperCase();
-  };
-
-
-  const getRandomColor = () => {
-    const colors = ["bg-pink-200","bg-purple-200","bg-pink-300","bg-purple-300","bg-pink-400","bg-rose-200"];
-    return colors[Math.floor(Math.random() * colors.length)];
-  };
-
-
-  const decorate = (list: Contact[]): UIContact[] =>
-    list.map(c => ({
-      ...c,
-      initials: getInitials(c.name),
-      color: getRandomColor(),
-    }));
 
 
   // ----------------- bootstrap: ensure user + load contacts -----------------
@@ -293,8 +290,8 @@ export default function SettingsPage() {
 
           {/* Contact List */}
           <div className="space-y-3">
-            {contacts.map((c) => (
-              <div key={c._id} className="flex items-center gap-3 px-4 py-2 bg-gray-50 rounded-xl group hover:bg-gray-100 transition-colors">
+            {contacts.map((c, index) => (
+              <div key={c._id || `contact-${index}`} className="flex items-center gap-3 px-4 py-2 bg-gray-50 rounded-xl group hover:bg-gray-100 transition-colors">
                 <div className={`w-10 h-10 ${c.color} rounded-full flex items-center justify-center font-bold text-white`}>
                   {c.initials}
                 </div>

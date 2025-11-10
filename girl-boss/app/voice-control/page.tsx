@@ -204,7 +204,7 @@ export default function VoiceAssistantPage() {
         <h1 className="text-4xl font-semibold mb-4 text-center text-gray-900">
           Voice Agent
         </h1>
-        <p className="text-center text-pink-400 mb-12 min-h-[28px]">
+        <p className="text-center text-pink-400 mb-12 min-h-7">
           {status}
         </p>
 
@@ -213,7 +213,7 @@ export default function VoiceAssistantPage() {
           <button
             onClick={toggleListening}
             disabled={isProcessing}
-            className="relative w-64 h-64 rounded-full border bg-gradient-to-br from-white/40 to-white/60 flex items-center justify-center transition-all duration-300 shadow-md disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-lg"
+            className="relative w-64 h-64 rounded-full border bg-linear-to-br from-white/40 to-white/60 flex items-center justify-center transition-all duration-300 shadow-md disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-lg"
           >
             {(isListening || isProcessing) && (
               <>

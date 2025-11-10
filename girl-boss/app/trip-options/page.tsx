@@ -10,31 +10,53 @@ import { Menu, User, Car, Bus } from "lucide-react";
 import Image from "next/image";
 import Navigation from "../components/Navigation";
 
-interface RouteStep {
-  instruction: string;
-  distance: number;
-  duration: number;
-}
-
-interface RouteInfo {
-  distance: number;
-  duration: number;
-  steps: RouteStep[];
+interface RouteLeg {
+  steps?: Array<{
+    end_location?: { lat: number; lng: number };
+  }>;
 }
 
 interface TripOption {
   mode: string;
-  icon: any;
+  icon: React.ComponentType<{ className?: string }>;
   time: string;
   duration: string;
   safetyScore: number;
   altIndex?: number;
-  route?: any;
+  route?: {
+    distance: number;
+    duration: number;
+    legs?: Array<{
+      steps?: Array<{
+        end_location?: { lat: number; lng: number };
+      }>;
+    }>;
+  };
+}
+
+interface GoogleMaps {
+  Map: new (element: HTMLElement, options: unknown) => unknown;
+  Marker: new (options: unknown) => unknown;
+  DirectionsService: new () => {
+    route: (request: unknown, callback: (result: unknown, status: string) => void) => void;
+  };
+  DirectionsRenderer: new (options: unknown) => {
+    setDirections: (directions: unknown) => void;
+  };
+  LatLngBounds: new () => {
+    extend: (point: unknown) => void;
+  };
+  SymbolPath: { CIRCLE: number };
+  TravelMode: { WALKING: string; DRIVING: string; TRANSIT: string };
+  DirectionsStatus: { OK: string };
+  maps?: GoogleMaps;
 }
 
 declare global {
   interface Window {
-    google: any;
+    google?: {
+      maps?: GoogleMaps;
+    };
   }
 }
 
@@ -44,9 +66,14 @@ function useLoadGoogleMaps() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // If SDK already present, mark loaded.
-    if (typeof window !== 'undefined' && (window as any).google && (window as any).google.maps) {
-      setLoaded(true);
+    // Check if maps is already loaded
+    const checkMapsLoaded = () => {
+      return typeof window !== 'undefined' && window.google?.maps;
+    };
+
+    // If SDK already present, mark loaded in next tick to avoid sync setState
+    if (checkMapsLoaded()) {
+      Promise.resolve().then(() => setLoaded(true));
       return;
     }
 
@@ -55,7 +82,7 @@ function useLoadGoogleMaps() {
     if (existing) {
       const onLoad = () => {
         // Sometimes the script loads but window.google is not available due to API key / referrer issues.
-        if ((window as any).google && (window as any).google.maps) {
+        if (checkMapsLoaded()) {
           setLoaded(true);
         } else {
           setError('Google Maps script loaded but `window.google` is not available — check API key and referrer restrictions');
@@ -65,7 +92,7 @@ function useLoadGoogleMaps() {
       existing.addEventListener('load', onLoad);
       existing.addEventListener('error', onError);
       // If the SDK is already present on window, run check immediately
-      if ((window as any).google && (window as any).google.maps) {
+      if (checkMapsLoaded()) {
         onLoad();
       }
       return () => {
@@ -78,7 +105,7 @@ function useLoadGoogleMaps() {
     const script = document.createElement('script');
     const key = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
     if (!key) {
-      setError('NEXT_PUBLIC_GOOGLE_MAPS_API_KEY is not defined. Add it to .env.local and restart dev.');
+      Promise.resolve().then(() => setError('NEXT_PUBLIC_GOOGLE_MAPS_API_KEY is not defined. Add it to .env.local and restart dev.'));
       return;
     }
     script.src = `https://maps.googleapis.com/maps/api/js?key=${key}&libraries=places,directions`;
@@ -88,7 +115,7 @@ function useLoadGoogleMaps() {
     script.onload = () => {
       // Give the SDK a moment to initialize
       setTimeout(() => {
-        if ((window as any).google && (window as any).google.maps) {
+        if (checkMapsLoaded()) {
           setLoaded(true);
         } else {
           setError('Google Maps script loaded but `window.google` is not available — check API key and referrer restrictions');
@@ -108,12 +135,11 @@ function useLoadGoogleMaps() {
 function TripPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [routeInfo, setRouteInfo] = useState<RouteInfo | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [tripOptions, setTripOptions] = useState<TripOption[]>([]);
   const [isNavOpen, setIsNavOpen] = useState(false);
   const mapRef = useRef<HTMLDivElement>(null);
-  const mapInstanceRef = useRef<any>(null);
+  const mapInstanceRef = useRef<unknown>(null);
   const [mapInitError, setMapInitError] = useState<string | null>(null);
 
   const { loaded: mapsLoaded, error: mapsError } = useLoadGoogleMaps();
@@ -136,10 +162,14 @@ function TripPageContent() {
         let isCharging = false;
         if ('getBattery' in navigator) {
           try {
-            const battery = await (navigator as any).getBattery();
+            interface BatteryManager {
+              level: number;
+              charging: boolean;
+            }
+            const battery = await (navigator as { getBattery: () => Promise<BatteryManager> }).getBattery();
             batteryPercent = Math.round(battery.level * 100);
             isCharging = battery.charging;
-          } catch (e) {
+          } catch {
             console.log('Battery API not available');
           }
         }
@@ -163,13 +193,17 @@ function TripPageContent() {
               const routeData = await routeResponse.json();
 
               // Extract waypoints from the route for detailed safety analysis
-              let waypoints: Array<{latitude: number, longitude: number}> = [];
-              if (routeResponse.ok && routeData.routes && routeData.routes[0]?.legs) {
-                const leg = routeData.routes[0].legs[0];
+              interface RouteData {
+                routes?: Array<{ legs?: RouteLeg[] }>;
+              }
+
+              const waypoints: Array<{latitude: number, longitude: number}> = [];
+              if (routeResponse.ok && (routeData as RouteData).routes && (routeData as RouteData).routes![0]?.legs) {
+                const leg = (routeData as RouteData).routes![0].legs![0];
                 if (leg.steps && leg.steps.length > 0) {
                   // Sample waypoints from route steps (every 2-3 steps to avoid too many API calls)
                   const stepInterval = Math.max(1, Math.floor(leg.steps.length / 5)); // Max 5 waypoints
-                  leg.steps.forEach((step: any, idx: number) => {
+                  leg.steps.forEach((step, idx: number) => {
                     if (idx % stepInterval === 0 && step.end_location) {
                       waypoints.push({
                         latitude: step.end_location.lat,
@@ -224,11 +258,17 @@ function TripPageContent() {
         );
 
         // Flatten all walking alternatives, keep one for other modes
-        let options: TripOption[] = [];
+        interface RouteResult {
+          distance: number;
+          duration: number;
+          legs?: RouteLeg[];
+        }
+        
+        const options: TripOption[] = [];
         for (const result of results) {
           if (!result.data || !result.data.routes) continue;
           const routes = result.mode === 'walking' ? result.data.routes : [result.data.routes[0]];
-          routes.forEach((route: any, idx: number) => {
+          routes.forEach((route: RouteResult, idx: number) => {
             const arrivalTime = new Date(Date.now() + route.duration * 1000);
             const hours = arrivalTime.getHours();
             const minutes = arrivalTime.getMinutes();
@@ -273,9 +313,9 @@ function TripPageContent() {
     // maps SDK is available, initialize map once
     setMapInitError(null);
 
-    let map: any = null;
+    let map: unknown = null;
     try {
-      map = new window.google.maps.Map(mapRef.current!, {
+      map = new window.google!.maps!.Map(mapRef.current!, {
         center: { lat: startLat, lng: startLon },
         zoom: 13,
         styles: [
@@ -287,13 +327,16 @@ function TripPageContent() {
         ],
       });
       mapInstanceRef.current = map;
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Map initialization error:', err);
-      setMapInitError(err?.message || String(err));
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      setMapInitError(errorMessage);
       return;
     }
 
       // Add markers
+      if (!window.google?.maps) return;
+      
       new window.google.maps.Marker({
         position: { lat: startLat, lng: startLon },
         map,
@@ -351,20 +394,25 @@ function TripPageContent() {
           },
         });
 
+        const travelModeValue = window.google.maps.TravelMode?.[travelMode as keyof typeof window.google.maps.TravelMode];
+        if (!travelModeValue) return;
+        
         directionsService.route(
           {
             origin: { lat: startLat, lng: startLon },
             destination: { lat: endLat, lng: endLon },
-            travelMode: window.google.maps.TravelMode[travelMode as keyof typeof window.google.maps.TravelMode],
+            travelMode: travelModeValue,
           },
-          (result: any, status: any) => {
+          (result: unknown, status: string) => {
+            if (!window.google?.maps) return;
             const okStatus = status === "OK" || status === window.google.maps.DirectionsStatus.OK;
             if (okStatus && result) {
               directionsRenderer.setDirections(result);
               // Fit bounds to show the entire route
               const bounds = new window.google.maps.LatLngBounds();
-              result.routes[0]?.overview_path?.forEach((p: any) => bounds.extend(p));
-              map.fitBounds(bounds);
+              const resultObj = result as { routes?: Array<{ overview_path?: unknown[] }> };
+              resultObj.routes?.[0]?.overview_path?.forEach((p: unknown) => bounds.extend(p));
+              (map as { fitBounds: (bounds: unknown) => void }).fitBounds(bounds);
             } else {
               console.warn(`Directions request failed for ${travelMode}:`, status);
             }
@@ -372,11 +420,6 @@ function TripPageContent() {
         );
       }
   }, [startLat, startLon, endLat, endLon, destination, transport, mapsLoaded, mapsError, tripOptions]);
-
-  const openInGoogleMaps = () => {
-    const url = `https://www.google.com/maps/dir/?api=1&origin=${startLat},${startLon}&destination=${endLat},${endLon}&travelmode=${transport === 'walking' ? 'walking' : transport === 'public' ? 'transit' : 'driving'}`;
-    window.open(url, '_blank');
-  };
 
   const getModeName = (mode: string) => {
     return mode === 'walking' ? 'Walking' : mode === 'driving' ? 'Driving' : 'Bus';
@@ -418,7 +461,7 @@ function TripPageContent() {
         {/* Title Section */}
         <div className="text-center mb-6">
           <h1 className="text-4xl font-semibold text-gray-900 mb-2 text-center">Trip Options</h1>
-          <p className="text-pink-400 text">View your trip's safety score</p>
+          <p className="text-pink-400 text">View your trip&apos;s safety score</p>
         </div>
 
         {isLoading ? (
@@ -441,7 +484,7 @@ function TripPageContent() {
                     key={index}
                     className="flex items-center gap-4 p-2 px-4 bg-white border-2 border-gray-200 rounded-2xl hover:border-pink-300 transition-colors"
                   >
-                    <div className="w-10 h-10 bg-pink-200 rounded-2xl flex items-center justify-center flex-shrink-0">
+                    <div className="w-10 h-10 bg-pink-200 rounded-2xl flex items-center justify-center shrink-0">
                       <option.icon className="w-5 h-5 text-gray-900" />
                     </div>
                     <div className="flex-1">

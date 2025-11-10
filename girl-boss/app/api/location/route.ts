@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get or create user data
-    let userData = userLocations.get(userId) || {
+    const userData = userLocations.get(userId) || {
       currentLocation: { lat: 0, lon: 0, timestamp: new Date() },
       preferredTransport: 'driving',
       tripHistory: [],

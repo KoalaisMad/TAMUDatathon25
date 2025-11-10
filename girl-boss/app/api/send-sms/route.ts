@@ -29,10 +29,11 @@ export async function POST(req: NextRequest) {
     });
 
     return NextResponse.json({ success: true, sid: msg.sid });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Twilio Error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { success: false, error: error.message ?? 'Unknown error' },
+      { success: false, error: errorMessage },
       { status: 500 }
     );
   }
