@@ -1,4 +1,4 @@
-import { connectToMongoDB } from "@/backend/src/config/db";
+import { connectToMongoDB } from "@/lib/db";
 import User from "@/models/User";
 import { Types } from "mongoose";
 

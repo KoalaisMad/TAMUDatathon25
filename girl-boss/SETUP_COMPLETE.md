@@ -9,8 +9,8 @@ Your GirlBoss app now has a **fully integrated** frontend and backend!
 ## 📁 New Project Structure
 
 ```
-girl-boss/
-├── backend/                    # ← Backend server (moved here)
+TAMUDatathon25/
+├── backend/                    # ← Backend server (separate project)
 │   ├── src/
 │   │   ├── index.ts           # Main Express server
 │   │   ├── routes/            # 5 route files
@@ -20,18 +20,21 @@ girl-boss/
 │   ├── .env                   # Backend environment variables
 │   └── package.json
 │
-├── lib/
-│   └── api.ts                 # ← NEW! API client library
-│
-├── app/
-│   ├── chat-assistant/        # ← UPDATED! Now uses backend
-│   ├── voice-control/
-│   ├── trip-options/
-│   └── ...
-│
-├── .env.local                 # ← UPDATED! Added API URL
-├── start.sh                   # ← NEW! Starts both servers
-└── INTEGRATION.md             # ← NEW! Integration guide
+└── girl-boss/                 # ← Frontend (Next.js app)
+    ├── lib/
+    │   ├── api.ts             # API client library
+    │   └── db.ts              # MongoDB connection for API routes
+    │
+    ├── app/
+    │   ├── api/               # Next.js API routes
+    │   ├── chat-assistant/
+    │   ├── voice-control/
+    │   ├── trip-options/
+    │   └── ...
+    │
+    ├── .env.local             # Frontend environment variables
+    ├── start.sh               # Starts both servers
+    └── INTEGRATION.md         # Integration guide
 ```
 
 ---
@@ -52,7 +55,7 @@ This starts:
 
 **Terminal 1:**
 ```bash
-cd girl-boss/backend
+cd backend
 npm run dev
 ```
 

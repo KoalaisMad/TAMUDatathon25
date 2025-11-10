@@ -40,11 +40,29 @@ Second Place for Databricks and Best use of Snowflake at TAMU Datathon 25
 ### 1. Clone the repository
 ```bash
 git clone https://github.com/KoalaisMad/TAMUDatathon25
-cd girl-boss
-npm install
-npm run dev
-make a new terminal
-cd girl-boss
+cd TAMUDatathon25
+```
+
+### 2. Quick Start (One Command)
+```bash
+chmod +x start.sh
+./start.sh
+```
+
+This will start both the backend (port 4000) and frontend (port 3000).
+
+### 3. Manual Start (Two Terminals)
+
+**Terminal 1 - Backend:**
+```bash
 cd backend
 npm install
 npm run dev
+```
+
+**Terminal 2 - Frontend:**
+```bash
+cd girl-boss
+npm install
+npm run dev
+```

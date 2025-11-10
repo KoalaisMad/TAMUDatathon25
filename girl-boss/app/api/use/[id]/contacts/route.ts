@@ -1,5 +1,5 @@
 import { NextResponse as Response } from "next/server";
-import { connectToMongoDB } from "@/backend/src/config/db";
+import { connectToMongoDB } from "@/lib/db";
 import User from "@/models/User";
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {

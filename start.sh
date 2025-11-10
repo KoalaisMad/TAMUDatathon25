@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# 🚀 GirlBoss App Startup Script
-# This starts both frontend and backend servers
+# 🚀 GirlBoss App Startup Script (Root Level)
+# This starts both frontend and backend servers from the project root
 
 echo "🎀 Starting GirlBoss App..."
 echo "================================"
@@ -22,7 +22,7 @@ trap cleanup SIGINT SIGTERM
 
 # Start backend in background
 echo "📦 Starting backend server on port 4000..."
-cd "$SCRIPT_DIR/../backend"
+cd "$SCRIPT_DIR/backend"
 npm run dev > "$SCRIPT_DIR/backend.log" 2>&1 &
 BACKEND_PID=$!
 echo "✅ Backend started (PID: $BACKEND_PID)"
@@ -34,8 +34,8 @@ sleep 2
 # Start frontend in background
 echo ""
 echo "🎨 Starting frontend on port 3000..."
-cd "$SCRIPT_DIR"
-npm run dev > frontend.log 2>&1 &
+cd "$SCRIPT_DIR/girl-boss"
+npm run dev > "$SCRIPT_DIR/frontend.log" 2>&1 &
 FRONTEND_PID=$!
 echo "✅ Frontend started (PID: $FRONTEND_PID)"
 echo "   Logs: frontend.log"
@@ -55,3 +55,4 @@ echo ""
 # Keep script running and show logs
 tail -f "$SCRIPT_DIR/frontend.log" "$SCRIPT_DIR/backend.log" &
 wait $BACKEND_PID $FRONTEND_PID
+
