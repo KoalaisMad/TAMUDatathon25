@@ -156,7 +156,7 @@ export default function SettingsPage() {
 
 
       {/* Main Content */}
-      <main className="max-w-2xl mx-auto px-8 py-12">
+      <main className="max-w-2xl mx-auto px-8 py-12 pb-18">
         {userStatus && (
           <div className="mb-4 p-2 bg-yellow-100 text-yellow-800 rounded text-sm">
             {userStatus}

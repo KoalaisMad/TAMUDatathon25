@@ -59,7 +59,7 @@ export default function LandingPage() {
       </section>
 
       {/* Features Section */}
-      <section id="features" className="px-8 lg:px-24 pb-25 bg-white">
+      <section id="features" className="px-8 lg:px-24 pb-18 bg-white">
         <div>
           <div className="text-center mb-8">
             <h2 className="text-2xl font-semibold mb-4">
@@ -73,7 +73,7 @@ export default function LandingPage() {
           <div className="grid md:grid-cols-3 gap-8">
             {features.map((feature, index) => (
               <div key={index} className="p-8 bg-white border-2 border-gray-200 rounded-2xl hover:border-pink-500 transition-all hover:shadow-xl">
-                <div className="w-14 h-14 bg-pink-100 rounded-xl flex items-center justify-center mb-6">
+                <div className="w-14 h-14 bg-pink-100 rounded-xl flex items-center justify-center mb-4">
                   <feature.icon className="w-7 h-7 text-pink-500" />
                 </div>
                 <h3 className="text-xl font-semibold text-gray-900 mb-3">{feature.title}</h3>

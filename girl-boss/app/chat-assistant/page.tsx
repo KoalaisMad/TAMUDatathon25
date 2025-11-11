@@ -2,7 +2,7 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Send } from "lucide-react";
 import Header from "@/components/Header";
 import { sendChatMessage } from "@/lib/api";
@@ -30,6 +30,12 @@ export default function ChatbotPage() {
     lon: number;
     name: string;
   } | null>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll to bottom when messages change
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
 
   // Get user's location when page loads
   useEffect(() => {
@@ -102,10 +108,12 @@ export default function ChatbotPage() {
       setMessages((prev) => [...prev, botResponse]);
     } catch (error) {
       console.error('Chat error:', error);
-      // show error if backend is down or something
+      const messageText = error instanceof Error
+        ? error.message
+        : "Sorry, I'm having trouble connecting right now.";
       const errorMessage: Message = {
         id: messages.length + 2,
-        text: "Sorry, I'm having trouble connecting right now. Please make sure the backend server is running on port 4000.",
+        text: messageText,
         sender: "bot",
         timestamp: new Date(),
       };
@@ -116,21 +124,22 @@ export default function ChatbotPage() {
   };
 
   return (
-    <div className="min-h-screen bg-white flex flex-col">
+    <div className="h-screen bg-white flex flex-col">
       <Header />
 
       {/* Main Content */}
-      <main className="flex-1 max-w-2xl mx-auto w-full px-8 flex flex-col pb-4">
-        <h1 className="text-4xl font-semibold pt-12 mb-2 text-center">
-          <span className="text-gray-900">Safety Assistant</span>
-        </h1>
-        <p className="text-center text-pink-400 mb-4">
-          AI-powered safety advice
-        </p>
+      <main className="flex-1 max-w-2xl mx-auto w-full px-8 flex flex-col overflow-hidden">
+        <div className="pt-12 mb-2">
+          <h1 className="text-4xl font-semibold text-center mb-2">
+            <span className="text-gray-900">Safety Assistant</span>
+          </h1>
+          <p className="text-center text-pink-400 mb-2">
+            AI-powered safety advice
+          </p>
+        </div>
 
-
-        {/* Messages Container */}
-        <div className="flex-1 overflow-y-auto mb-6 space-y-4">
+        {/* Messages Container - Scrollable */}
+        <div className="flex-1 overflow-y-auto space-y-4">
           {messages.map((message) => (
             <div
               key={message.id}
@@ -150,17 +159,19 @@ export default function ChatbotPage() {
               </div>
             </div>
           ))}
+          {/* Scroll anchor */}
+          <div ref={messagesEndRef} />
         </div>
 
-        {/* Input Area */}
-        <div className="pb-6 flex items-center gap-2">
+        {/* Input Area - Fixed at Bottom */}
+        <div className="pb-6 lg:pb-12 pt-4 flex items-center gap-2 bg-white">
           <input
             type="text"
             value={inputMessage}
             onChange={(e) => setInputMessage(e.target.value)}
             onKeyPress={(e) => e.key === "Enter" && handleSendMessage()}
             placeholder="Type your message here..."
-            className="flex-1 px-4 py-3 rounded-full border border-gray-300 focus:outline-none focus:ring-2 focus:ring-pink-400 focus:border-transparent text-sm text-gray-700 placeholder-gray-400"
+            className="flex-1 px-4 py-2 rounded-full border border-gray-300 focus:outline-none focus:ring-2 focus:ring-pink-400 focus:border-transparent text-sm text-gray-700 placeholder-gray-400"
           />
           <button
             onClick={handleSendMessage}
