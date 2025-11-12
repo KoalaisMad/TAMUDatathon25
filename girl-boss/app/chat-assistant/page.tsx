@@ -124,22 +124,22 @@ export default function ChatbotPage() {
   };
 
   return (
-    <div className="h-screen bg-white flex flex-col">
+    <div className="bg-white relative">
       <Header />
 
       {/* Main Content */}
-      <main className="flex-1 max-w-2xl mx-auto w-full px-8 flex flex-col overflow-hidden">
+      <main className="max-w-2xl mx-auto w-full px-8">
         <div className="pt-12 mb-2">
           <h1 className="text-4xl font-semibold text-center mb-2">
             <span className="text-gray-900">Safety Assistant</span>
           </h1>
-          <p className="text-center text-pink-400 mb-2">
+          <p className="text-center text-pink-400 mb-4">
             AI-powered safety advice
           </p>
         </div>
 
-        {/* Messages Container - Scrollable */}
-        <div className="flex-1 overflow-y-auto space-y-4">
+        {/* Messages Container - Scrollable with bottom padding for fixed input */}
+        <div className="space-y-4 pb-0">
           {messages.map((message) => (
             <div
               key={message.id}
@@ -162,9 +162,11 @@ export default function ChatbotPage() {
           {/* Scroll anchor */}
           <div ref={messagesEndRef} />
         </div>
+      </main>
 
-        {/* Input Area - Fixed at Bottom */}
-        <div className="pb-6 lg:pb-12 pt-4 flex items-center gap-2 bg-white">
+      {/* Input Area - Absolute positioned at bottom with z-index */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white z-50">
+        <div className="max-w-2xl mx-auto w-full px-8 py-4 pb-6 lg:pb-12 flex items-center gap-2">
           <input
             type="text"
             value={inputMessage}
@@ -185,7 +187,7 @@ export default function ChatbotPage() {
             )}
           </button>
         </div>
-      </main>
+      </div>
     </div>
   );
 }
