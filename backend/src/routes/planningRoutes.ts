@@ -154,12 +154,40 @@ router.post('/route-safety-score', async (req: Request, res: Response) => {
     const isDusk = (hour >= 17 && hour < 20) || (hour >= 5 && hour < 7);
     const isRushHour = (hour >= 7 && hour <= 9) || (hour >= 16 && hour <= 19);
     
-    // Use latitude/longitude to vary conditions by location
-    const lat = parseFloat(startLat);
-    const lon = parseFloat(startLon);
-    const locationSeed = Math.abs(Math.sin(lat * lon * 1000)) * 100; // Deterministic but varies by location
+    // Calculate average characteristics across entire route (start, waypoints, end)
+    const startLat_num = parseFloat(startLat);
+    const startLon_num = parseFloat(startLon);
+    const endLat_num = parseFloat(endLat);
+    const endLon_num = parseFloat(endLon);
     
-    // Weather varies by time and location
+    // Collect all route points for averaging
+    const allRoutePoints = [
+      { lat: startLat_num, lon: startLon_num, weight: 1.5 }, // Start gets slightly more weight
+      ...(waypoints || []).map((wp: any) => ({ 
+        lat: parseFloat(wp.latitude || wp.lat), 
+        lon: parseFloat(wp.longitude || wp.lon),
+        weight: 1.0 
+      })),
+      { lat: endLat_num, lon: endLon_num, weight: 1.5 } // End gets slightly more weight
+    ];
+    
+    // Calculate weighted average risk factors across entire route
+    let totalLocationSeed = 0;
+    let totalAreaRisk = 0;
+    let totalWeight = 0;
+    
+    allRoutePoints.forEach(point => {
+      const pointSeed = Math.abs(Math.sin(point.lat * point.lon * 1000)) * 100;
+      const pointAreaRisk = Math.abs(Math.sin(point.lat * 100) * Math.cos(point.lon * 100));
+      totalLocationSeed += pointSeed * point.weight;
+      totalAreaRisk += pointAreaRisk * point.weight;
+      totalWeight += point.weight;
+    });
+    
+    const locationSeed = totalLocationSeed / totalWeight;
+    const areaRiskFactor = totalAreaRisk / totalWeight;
+    
+    // Weather varies by time and average location along route
     const weather = {
       severe_alert: false,
       precipitation_probability: Math.round(20 + locationSeed % 40 + (isNight ? 15 : 0)), // 20-75%
@@ -168,8 +196,7 @@ router.post('/route-safety-score', async (req: Request, res: Response) => {
     };
 
     // Crime data varies significantly by location and time
-    // Use coordinates to generate location-specific crime patterns
-    const areaRiskFactor = Math.abs(Math.sin(lat * 100) * Math.cos(lon * 100)); // 0-1
+    // Now averaged across the entire route
     const baseIncidents = 8 + Math.round(areaRiskFactor * 25); // 8-33 incidents per 1000
     const timeMultiplier = isNight ? 1.8 : (isDusk ? 1.3 : 1.0);
     
@@ -179,15 +206,19 @@ router.post('/route-safety-score', async (req: Request, res: Response) => {
       scale: 15
     };
 
-    // Location characteristics vary by area and time
+    // Location characteristics based on route average
     // Urban areas: higher population density, more services
     // Suburban: medium density
     // Rural: low density, more isolated
     const urbanScore = areaRiskFactor; // 0 = rural, 1 = urban
     
+    // Use midpoint of route for primary location data
+    const midLat = (startLat_num + endLat_num) / 2;
+    const midLon = (startLon_num + endLon_num) / 2;
+    
     const location = {
-      latitude: lat,
-      longitude: lon,
+      latitude: midLat,
+      longitude: midLon,
       population_density: Math.round(50 + urbanScore * 800 + (isNight ? -200 : 0)), // 50-850
       recent_incidents: Math.round((1 - urbanScore) * 6 + (isNight ? 3 : 0)), // 0-9, more in less urban areas at night
       safe_spaces_count: Math.round(urbanScore * 8 * (isNight ? 0.3 : 1.0)), // 0-8, fewer at night

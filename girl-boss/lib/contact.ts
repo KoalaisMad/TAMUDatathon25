@@ -45,7 +45,7 @@
 //   if (!r.ok) throw new Error(await r.text());
 // }
 
-const BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api";
+const BASE = process.env.NEXT_PUBLIC_API_URL || "https://api.girlbosssafety.us/api";
 
 export async function upsertUser(name: string, email: string) {
   const r = await fetch(`${BASE}/users`, {
