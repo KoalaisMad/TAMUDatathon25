@@ -24,6 +24,8 @@ app.use(cors({
   origin: [
     'http://localhost:3000',
     'http://localhost:3001', // Next.js fallback port
+    'https://girlbosssafety.us',
+    'https://www.girlbosssafety.us',
     process.env.FRONTEND_URL || ''
   ].filter(Boolean),
   credentials: true
