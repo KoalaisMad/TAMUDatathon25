@@ -5,7 +5,8 @@
 "use client";
 
 import { useEffect, useState, useRef, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { User, Car, Bus } from "lucide-react";
 import Header from "@/components/Header";
 
@@ -133,6 +134,8 @@ function useLoadGoogleMaps() {
 
 function TripPageContent() {
   const searchParams = useSearchParams();
+  const router = useRouter();
+  const { status } = useSession();
   const [isLoading, setIsLoading] = useState(true);
   const [tripOptions, setTripOptions] = useState<TripOption[]>([]);
   const mapRef = useRef<HTMLDivElement>(null);
@@ -140,6 +143,13 @@ function TripPageContent() {
   const [mapInitError, setMapInitError] = useState<string | null>(null);
 
   const { loaded: mapsLoaded, error: mapsError } = useLoadGoogleMaps();
+
+  // Redirect if not authenticated
+  useEffect(() => {
+    if (status === "unauthenticated") {
+      router.push("/");
+    }
+  }, [status, router]);
 
   const destination = searchParams.get("destination") || "Unknown";
   const transport = searchParams.get("transport") || "driving";

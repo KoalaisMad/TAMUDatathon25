@@ -7,6 +7,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Mic, Phone } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import Header from "@/components/Header";
 
 // Define types for speech recognition
@@ -44,12 +45,20 @@ declare global {
 
 export default function VoiceAssistantPage() {
   const router = useRouter();
+  const { status: authStatus } = useSession();
   const [isListening, setIsListening] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [transcript, setTranscript] = useState("");
   const [status, setStatus] = useState("Tap the mic for immediate assistance");
   
   const recognitionRef = useRef<SpeechRecognition | null>(null);
+
+  // Redirect if not authenticated
+  useEffect(() => {
+    if (authStatus === "unauthenticated") {
+      router.push("/");
+    }
+  }, [authStatus, router]);
 
   useEffect(() => {
     // Initialize speech recognition

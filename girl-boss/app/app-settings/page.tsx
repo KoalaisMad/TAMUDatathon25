@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { X, Plus } from "lucide-react";
 import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import Header from "@/components/Header";
 import { Button } from "@/components/ui/button";
 import {
@@ -53,8 +54,8 @@ const decorate = (list: Contact[]): UIContact[] =>
 
 
 export default function SettingsPage() {
-  const { data: session } = useSession();
-
+  const { data: session, status } = useSession();
+  const router = useRouter();
 
   const [showAddContact, setShowAddContact] = useState(false);
   const [newContactName, setNewContactName] = useState("");
@@ -64,6 +65,12 @@ export default function SettingsPage() {
   const [contacts, setContacts] = useState<UIContact[]>([]);
   const [userStatus, setUserStatus] = useState<string>("");
 
+  // Redirect if not authenticated
+  useEffect(() => {
+    if (status === "unauthenticated") {
+      router.push("/");
+    }
+  }, [status, router]);
 
   // ----------------- bootstrap: ensure user + load contacts -----------------
   useEffect(() => {

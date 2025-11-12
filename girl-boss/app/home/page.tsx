@@ -72,12 +72,19 @@ const calculateDistance = (
 
 export default function Home() {
   const router = useRouter();
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   
   // Get first name from session, fallback to "User"
   const userName = session?.user?.name?.split(" ")[0] || "User";
   const userEmail = session?.user?.email ?? ""; 
   const [userId] = useState("user-" + Math.random().toString(36).substr(2, 9)); // Generate unique user ID
+
+  // Redirect if not authenticated
+  useEffect(() => {
+    if (status === "unauthenticated") {
+      router.push("/");
+    }
+  }, [status, router]);
   const [selectedTransport, setSelectedTransport] = useState<string | null>(
     null
   );

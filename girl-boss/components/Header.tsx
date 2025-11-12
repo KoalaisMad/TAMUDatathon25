@@ -4,10 +4,12 @@ import { Menu } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useSession } from "next-auth/react";
 import NavigationMenu from "@/components/Navigation";
 
 export default function Header() {
   const router = useRouter();
+  const { status } = useSession();
   const [isNavOpen, setIsNavOpen] = useState(false);
 
   return (
@@ -28,13 +30,16 @@ export default function Header() {
             />
           </button>
         </div>
-        <button 
-          onClick={() => setIsNavOpen(true)}
-          className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-          aria-label="Open menu"
-        >
-          <Menu className="w-6 h-6 text-gray-700" />
-        </button>
+        {/* Only show menu button if user is authenticated */}
+        {status === "authenticated" && (
+          <button 
+            onClick={() => setIsNavOpen(true)}
+            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            aria-label="Open menu"
+          >
+            <Menu className="w-6 h-6 text-gray-700" />
+          </button>
+        )}
       </header>
     </>
   );

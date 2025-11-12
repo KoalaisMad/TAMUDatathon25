@@ -12,7 +12,7 @@ interface NavigationProps {
 
 export default function Navigation({ isOpen, onClose }: NavigationProps) {
   const router = useRouter();
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
 
   const menuItems = [
     { name: "Home", icon: Home, path: "/" },
@@ -27,6 +27,9 @@ export default function Navigation({ isOpen, onClose }: NavigationProps) {
     onClose();
   };
 
+  // Don't show navigation if user is not logged in
+  if (status === "unauthenticated") return null;
+  
   if (!isOpen) return null;
 
   return (
