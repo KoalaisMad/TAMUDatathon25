@@ -1,57 +1,38 @@
 // Voice control page
-// honestly this is pretty cool - you can just talk to it
-// still trying to figure out how to make the animation smoother tho
+// This version uses MediaRecorder to send audio to the Google Cloud backend.
 
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Mic, Phone } from "lucide-react";
+import { Mic, Phone, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import Header from "@/components/Header";
 
-// Define types for speech recognition
-interface SpeechRecognitionEvent extends Event {
-  results: {
-    [index: number]: {
-      [index: number]: {
-        transcript: string;
-      };
-    };
-  };
-}
-
-interface SpeechRecognitionErrorEvent extends Event {
-  error: string;
-}
-
-interface SpeechRecognition extends EventTarget {
-  continuous: boolean;
-  interimResults: boolean;
-  lang: string;
-  start: () => void;
-  stop: () => void;
-  onresult: ((event: SpeechRecognitionEvent) => void) | null;
-  onerror: ((event: SpeechRecognitionErrorEvent) => void) | null;
-  onend: (() => void) | null;
-}
-
-declare global {
-  interface Window {
-    SpeechRecognition: new () => SpeechRecognition;
-    webkitSpeechRecognition: new () => SpeechRecognition;
-  }
-}
+// --- REMOVED: SpeechRecognition types are no longer needed ---
 
 export default function VoiceAssistantPage() {
   const router = useRouter();
   const { status: authStatus } = useSession();
-  const [isListening, setIsListening] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [transcript, setTranscript] = useState("");
-  const [status, setStatus] = useState("Tap the mic for immediate assistance");
-  
-  const recognitionRef = useRef<SpeechRecognition | null>(null);
+
+  // --- RENAMED & ADDED STATE ---
+  const [isConversationActive, setIsConversationActive] = useState(false);
+  const [status, setStatus] = useState("Press the phone button to start talking"); // Updated text
+
+  // --- REPLACED & ADDED REFS ---
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const audioPlayerRef = useRef<HTMLAudioElement | null>(null); // To play the response
+  const isConversationActiveRef = useRef(false); // Track conversation state in ref for callbacks
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const silenceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+
+  // Keep ref in sync with state
+  useEffect(() => {
+    isConversationActiveRef.current = isConversationActive;
+  }, [isConversationActive]);
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -60,126 +41,214 @@ export default function VoiceAssistantPage() {
     }
   }, [authStatus, router]);
 
-  useEffect(() => {
-    // Initialize speech recognition
-    if (typeof window !== "undefined" && ("webkitSpeechRecognition" in window || "SpeechRecognition" in window)) {
-      const SpeechRecognitionConstructor = window.webkitSpeechRecognition || window.SpeechRecognition;
-      recognitionRef.current = new SpeechRecognitionConstructor();
-      recognitionRef.current.continuous = false;
-      recognitionRef.current.interimResults = false;
-      recognitionRef.current.lang = "en-US";
+  // --- REMOVED: The entire useEffect for SpeechRecognition is gone ---
 
-      recognitionRef.current.onresult = async (event: SpeechRecognitionEvent) => {
-        const text = event.results[0][0].transcript;
-        setTranscript(text);
-        setStatus(`You said: "${text}"`);
-        setIsListening(false);
-        
-        // Send to chat API
-        await sendToChat(text);
-      };
-
-      recognitionRef.current.onerror = (event: SpeechRecognitionErrorEvent) => {
-        console.error("Speech recognition error:", event.error);
-        setStatus("Error: Could not understand. Try again.");
-        setIsListening(false);
-      };
-
-      recognitionRef.current.onend = () => {
-        setIsListening(false);
-      };
+  // --- NEW: Function to start recording audio with silence detection ---
+  const startRecording = async () => {
+    // Stop any currently playing audio
+    if (audioPlayerRef.current) {
+      audioPlayerRef.current.pause();
     }
 
-    return () => {
-      if (recognitionRef.current) {
-        recognitionRef.current.stop();
-      }
-    };
-  }, []);
+    try {
+      // Get microphone access
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
 
-  const sendToChat = async (text: string) => {
-    setIsProcessing(true);
-    setStatus("Processing your request...");
+      // Setup MediaRecorder
+      // We use webm/opus, which matches the backend config
+      const recorder = new MediaRecorder(stream, { mimeType: 'audio/webm; codecs=opus' });
+      mediaRecorderRef.current = recorder;
+      audioChunksRef.current = []; // Clear old audio chunks
+
+      // Store audio data as it comes in
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      // When recording stops, send the audio to the server
+      recorder.onstop = () => {
+        // Stop the audio stream tracks
+        stream.getTracks().forEach(track => track.stop());
+        streamRef.current = null;
+        
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm; codecs=opus' });
+        sendAudioToServer(audioBlob);
+      };
+
+      recorder.start();
+      setStatus("Listening...");
+
+      // Set up silence detection
+      setupSilenceDetection(stream);
+
+    } catch (err) {
+      console.error("Error starting recording:", err);
+      alert("Could not start recording. Please ensure microphone access is allowed.");
+    }
+  };
+
+  // --- NEW: Silence detection using Web Audio API ---
+  const setupSilenceDetection = (stream: MediaStream) => {
+    const audioContext = new AudioContext();
+    const analyser = audioContext.createAnalyser();
+    const microphone = audioContext.createMediaStreamSource(stream);
+    
+    analyser.fftSize = 512;
+    analyser.smoothingTimeConstant = 0.8;
+    microphone.connect(analyser);
+    
+    audioContextRef.current = audioContext;
+    analyserRef.current = analyser;
+
+    const bufferLength = analyser.frequencyBinCount;
+    const dataArray = new Uint8Array(bufferLength);
+
+    let silenceStart = Date.now();
+    let speechStart = Date.now();
+    const SILENCE_THRESHOLD = 10; // Volume threshold (0-255)
+    const SILENCE_DURATION = 1500; // 1.5 seconds of silence
+    const MIN_SPEECH_DURATION = 500; // Must speak for at least 0.5 seconds
+
+    const checkAudioLevel = () => {
+      if (!mediaRecorderRef.current || mediaRecorderRef.current.state !== 'recording') {
+        return;
+      }
+
+      analyser.getByteFrequencyData(dataArray);
+      
+      // Calculate average volume
+      const average = dataArray.reduce((sum, value) => sum + value, 0) / bufferLength;
+
+      if (average < SILENCE_THRESHOLD) {
+        // Silence detected
+        const silenceDuration = Date.now() - silenceStart;
+        const speechDuration = silenceStart - speechStart;
+        
+        // Only auto-stop if we've detected speech first and then silence
+        if (silenceDuration > SILENCE_DURATION && speechDuration > MIN_SPEECH_DURATION) {
+          console.log('Silence detected after speech, stopping recording');
+          stopRecording();
+          return;
+        }
+      } else {
+        // Sound detected
+        if (Date.now() - silenceStart > 100) {
+          // Was silent, now speaking - mark start of speech
+          speechStart = Date.now();
+        }
+        silenceStart = Date.now();
+      }
+
+      // Continue checking
+      requestAnimationFrame(checkAudioLevel);
+    };
+
+    checkAudioLevel();
+  };
+
+  // --- NEW: Function to stop recording ---
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
+      mediaRecorderRef.current.stop(); // This will trigger the 'onstop' event
+      setStatus("Thinking...");
+      
+      // Clean up audio context
+      if (audioContextRef.current) {
+        audioContextRef.current.close();
+        audioContextRef.current = null;
+      }
+      analyserRef.current = null;
+    }
+  };
+
+  // --- MODIFIED: This function now sends a file and plays audio ---
+  const sendAudioToServer = async (audioBlob: Blob) => {
+    const formData = new FormData();
+    formData.append('audio', audioBlob, 'recording.webm');
 
     try {
-      const response = await fetch("/api/chatbot", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: text }),
+      // --- CHANGED: Point to the voice API endpoint ---
+      const response = await fetch('/api/voice', {
+        method: 'POST',
+        body: formData, // Send FormData, not JSON
       });
 
-      const data = await response.json();
+      const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Failed to get response");
+        throw new Error(result.error || result.details || "Server error");
       }
 
-      const replyText = data.message;
-      console.log("📝 AI Response:", replyText);
+      // --- CHANGED: We get audio back ---
+      setStatus("Speaking response...");
 
-      // Use browser's built-in speech synthesis
-      if ('speechSynthesis' in window) {
-        const utterance = new SpeechSynthesisUtterance(replyText);
-        
-        // Configure voice (female, US English)
-        const voices = window.speechSynthesis.getVoices();
-        const femaleVoice = voices.find(v => 
-          v.lang.startsWith('en') && v.name.includes('Female')
-        ) || voices.find(v => v.lang.startsWith('en'));
-        
-        if (femaleVoice) {
-          utterance.voice = femaleVoice;
+      // Play the response audio
+      const audioData = `data:audio/mp3;base64,${result.audio}`;
+      const audio = new Audio(audioData);
+      audioPlayerRef.current = audio;
+
+      audio.onended = () => {
+        // If conversation is still active, automatically start listening again
+        if (isConversationActiveRef.current) {
+          setStatus("Listening...");
+          setTimeout(() => startRecording(), 500); // Small delay before restarting
+        } else {
+          setStatus("Press the phone button to start talking");
         }
-        
-        utterance.rate = 1.0;
-        utterance.pitch = 1.0;
-        utterance.volume = 1.0;
-
-        setStatus("Speaking response...");
-
-        utterance.onend = () => {
-          console.log("✅ Speech finished");
-          setStatus("Tap the mic for immediate assistance");
-          setIsProcessing(false);
-        };
-
-        utterance.onerror = (event) => {
-          console.error("❌ Speech error:", event);
-          setStatus("Error speaking response");
-          setIsProcessing(false);
-        };
-
-        window.speechSynthesis.speak(utterance);
-      } else {
-        // Fallback: just show the text
-        console.warn("Speech synthesis not supported");
-        setStatus(replyText);
-        setIsProcessing(false);
-      }
+      };
+      
+      audio.play();
 
     } catch (error) {
       console.error("Chat error:", error);
       const errorMessage = error instanceof Error ? error.message : "Unknown error";
       setStatus(`Error: ${errorMessage}`);
-      setIsProcessing(false);
     }
   };
 
-  const toggleListening = () => {
-    if (!recognitionRef.current) {
-      setStatus("Speech recognition not supported in this browser");
-      return;
-    }
+  // --- NEW: Start conversation mode ---
+  const startConversation = () => {
+    setIsConversationActive(true);
+    setStatus("Starting conversation...");
+    startRecording();
+  };
 
-    if (isListening) {
-      recognitionRef.current.stop();
-      setIsListening(false);
-      setStatus("Tap the mic for immediate assistance");
-    } else {
-      setTranscript("");
-      setIsListening(true);
-      setStatus("Listening...");
-      recognitionRef.current.start();
+  // --- NEW: End conversation mode ---
+  const endConversation = () => {
+    setIsConversationActive(false);
+    setStatus("Press the phone button to start talking");
+    
+    // Stop any recording
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
+      mediaRecorderRef.current.stop();
+    }
+    
+    // Stop the audio stream
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+    
+    // Clean up audio context
+    if (audioContextRef.current) {
+      audioContextRef.current.close();
+      audioContextRef.current = null;
+    }
+    analyserRef.current = null;
+    
+    // Clear any silence timeout
+    if (silenceTimeoutRef.current) {
+      clearTimeout(silenceTimeoutRef.current);
+      silenceTimeoutRef.current = null;
+    }
+    
+    // Stop any playing audio
+    if (audioPlayerRef.current) {
+      audioPlayerRef.current.pause();
+      audioPlayerRef.current = null;
     }
   };
 
@@ -189,54 +258,62 @@ export default function VoiceAssistantPage() {
 
       {/* Main Content */}
       <main className="flex-1 flex flex-col items-center pt-12 px-8">
-        <h1 className="text-4xl font-semibold mb-4 text-center text-gray-900">
-          Voice Agent
+        <h1 className="text-4xl font-semibold mb-2 text-center text-gray-900">
+          Voice Assistant
         </h1>
-        <p className="text-center text-pink-400 mb-12 min-h-7">
+        <p className="text-center text-pink-400 mb-16">
           {status}
         </p>
 
         {/* Voice Animation Circle */}
         <div className="relative mb-16">
-          <button
-            onClick={toggleListening}
-            disabled={isProcessing}
-            className="relative w-64 h-64 rounded-full border bg-linear-to-br from-white/40 to-white/60 flex items-center justify-center transition-all duration-300 shadow-md disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-lg"
-          >
-            {(isListening || isProcessing) && (
-              <>
-                <div className="absolute inset-0 rounded-full bg-pink-300/30 animate-ping" />
-                <div className="absolute inset-8 rounded-full bg-pink-200/20 animate-pulse" />
-              </>
+          {/* Always show the animated circle */}
+          <div className="relative w-64 h-64 rounded-full flex items-center justify-center transition-all duration-300 shadow-md overflow-hidden">
+            {/* Pulsing pink gradient when conversation is active */}
+            {isConversationActive ? (
+              <div className="absolute inset-0 rounded-full bg-linear-to-r from-pink-200 via-pink-400 to-pink-500 animate-gradient-wave" />
+            ) : (
+              <div className="absolute inset-0 rounded-full bg-linear-to-br from-white/40 to-white/60 border border-gray-200" />
             )}
-            <Mic className={`w-20 h-20 ${isListening ? "text-pink-500" : isProcessing ? "text-pink-400" : "text-gray-400"} transition-colors`} />
-          </button>
-        </div>
-
-        {/* Transcript Display */}
-        {transcript && (
-          <div className="mb-8 px-6 py-4 bg-white/50 rounded-lg border border-pink-200 max-w-md">
-            <p className="text-sm text-gray-600 mb-1 font-semibold">You said:</p>
-            <p className="text-gray-900">&ldquo;{transcript}&rdquo;</p>
+            
+            <Mic className={`w-20 h-20 ${isConversationActive ? "text-white" : "text-gray-400"} transition-colors z-10 relative`} />
           </div>
-        )}
-
-        {/* Action Buttons */}
-        <div className="flex gap-8">
-          <button 
-            onClick={toggleListening}
-            disabled={isProcessing}
-            className="w-16 h-16 bg-white rounded-full border flex items-center justify-center shadow-sm hover:shadow-md transition-shadow disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <Mic className={`w-8 h-8 ${isListening ? "text-pink-500" : "text-pink-400"}`} />
-          </button>
-          <button 
-            onClick={() => router.push("/chat-assistant")}
-            className="w-16 h-16 bg-white rounded-full flex border items-center justify-center shadow-sm hover:shadow-md transition-shadow"
-          >
-            <Phone className="w-8 h-8 text-pink-500" />
-          </button>
         </div>
+
+        <style jsx>{`
+          @keyframes gradient-wave {
+            0%, 100% {
+              transform: scale(1);
+              opacity: 1;
+            }
+            50% {
+              transform: scale(1.05);
+              opacity: 0.8;
+            }
+          }
+          .animate-gradient-wave {
+            animation: gradient-wave 2s ease-in-out infinite;
+          }
+        `}</style>
+
+        {/* Action Button - Phone to start, X to end */}
+        {!isConversationActive ? (
+          // Start Conversation Button
+          <button
+            onClick={startConversation}
+            className="w-12 h-12 bg-pink-500 hover:bg-pink-600 rounded-full flex items-center justify-center shadow-lg hover:shadow-xl transition-all"
+          >
+            <Phone className="w-6 h-6 text-white" />
+          </button>
+        ) : (
+          // End Conversation Button
+          <button
+            onClick={endConversation}
+            className="w-12 h-12 bg-red-500 hover:bg-red-600 rounded-full flex items-center justify-center shadow-lg hover:shadow-xl transition-all"
+          >
+            <X className="w-6 h-6 text-white" />
+          </button>
+        )}
       </main>
     </div>
   );
