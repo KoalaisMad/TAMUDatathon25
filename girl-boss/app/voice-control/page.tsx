@@ -253,7 +253,7 @@ export default function VoiceAssistantPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="flex flex-col">
       <Header />
 
       {/* Main Content */}
